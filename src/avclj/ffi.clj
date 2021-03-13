@@ -1,5 +1,7 @@
 (ns avclj.ffi
-  (:require [tech.v3.datatype :as dtype]
+  ;;Getting the context layout correct requires it's own file!!
+  (:require [avclj.av-context :as av-context]
+            [tech.v3.datatype :as dtype]
             [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype.struct :as dt-struct]
             [tech.v3.datatype.ffi.size-t :as ffi-size-t]
