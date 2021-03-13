@@ -1,1 +1,5 @@
 FFmpeg
+.cpcache
+.nrepl-port
+classes
+cpptest/a.out
