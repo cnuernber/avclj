@@ -189,6 +189,20 @@ Input data shapes: %s"
 
 
 (defn make-video-encoder
+  "Make a video encoder.
+
+  * `height` - divisible by 2
+  * `width` - divisible by 2
+  * `ostream`  - convertible via tech.v3.io/output-stream! to an output stream.
+
+  Selected Options:
+
+  * `:input-pixfmt` - One of the pixel formats.  Defaults to \"AV_PIX_FMT_BGR24\"
+  * `:encoder-pixfmt` - One of the pixel formats.  Defaults to \"AV_PIX_FMT_YUV420P\".
+     Changing this will probably cause opending the codec to fail with an
+     invalid argument.
+  * `:fps-numerator` - :int32 defaults to 25.
+  * `:fps-denominator` - :int32 defaults to 1."
   (^java.lang.AutoCloseable
    [height width ostream
     {:keys [bit-rate gop-size max-b-frames
