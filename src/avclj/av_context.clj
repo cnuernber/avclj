@@ -1,6 +1,7 @@
 (ns avclj.av-context
   (:require [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype.ffi.size-t :as ffi-size-t]
+            [tech.v3.datatype.ffi.clang :as ffi-clang]
             [tech.v3.datatype.struct :as dt-struct]
             [tech.v3.datatype.errors :as errors]
             [camel-snake-kebab.core :as csk]
@@ -318,110 +319,18 @@
        240 |   const struct AVCodecHWConfigInternal ** hw_configs")
 
 
-;;Exactly three spaces, else we are into the inner stuff.
-(def line-regex #"\s+(\d+)\s\|\s\s\s(\w.+)")
-(def ary-regex #"\[(\d+)\]")
-
-(defn line-struct-dec
-  [^String str-line]
-  (let [line-split (s/split str-line #"\s+")
-        member-name (csk/->kebab-case-keyword (last line-split))
-        n-elems (if-let [ary-len (re-find ary-regex str-line)]
-                  (Integer/parseInt (second ary-len))
-                  1)]
-    (merge
-     {:name member-name
-      :n-elems n-elems}
-     (cond
-       (.contains str-line "(*)(")
-       {:datatype (ffi-size-t/ptr-t-type)}
-       (.contains str-line "*")
-       (merge {:datatype (ffi-size-t/ptr-t-type)})
-       (.startsWith str-line "struct")
-       {:datatype (->> (s/split str-line #"\s+")
-                       (second)
-                       (csk/->kebab-case-keyword))}
-       (.startsWith str-line "enum")
-       {:datatype :int32}
-       :else
-       (let [ltype (first line-split)
-             [ltype unsigned?] (if (= ltype "unsigned")
-                                 [(second line-split) true]
-                                 [ltype false])
-             line-dtype (cond
-                          (= ltype "int64_t")
-                          :int64
-                          (= ltype "int")
-                          (if unsigned?
-                            :uint32
-                            :int32)
-                          (= ltype "uint32_t")
-                          :uint32
-                          (= ltype "uint64_t")
-                          :uint64
-                          (= ltype "float")
-                          :float32
-                          (= ltype "size_t")
-                          (ffi-size-t/size-t-type)
-                          (= ltype "uint8_t")
-                          :uint8
-                          :else
-                          (errors/throwf "Failed to parse dtype: %s" str-line))]
-         {:datatype line-dtype})))))
-
-
-(defn dump->struct-members
-  [dump-data]
-  (->> (s/split dump-data #"\n+")
-       (map (fn [line-str]
-              (when-let [grps (re-matches line-regex line-str)]
-                (let [[_ offset typedec] grps]
-                  (merge (line-struct-dec typedec)
-                         {:calculated-offset (Integer/parseInt offset)})))))
-       (remove nil?)))
-
-
 (dt-struct/define-datatype! :av-rational [{:name :num :datatype :int32}
                                           {:name :den :datatype :int32}])
 
 
-(def context-def*
-  (delay
-    (dt-struct/define-datatype!
-      :av-context
-      (dump->struct-members context-layout))))
+(def context-def* (delay (ffi-clang/defstruct-from-layout
+                           :av-context context-layout)))
 
+(def packet-def* (delay (ffi-clang/defstruct-from-layout
+                          :av-packet packet-layout)))
 
-(def packet-def*
-  (delay
-    (dt-struct/define-datatype!
-      :av-packet
-      (dump->struct-members packet-layout))))
+(def frame-def* (delay (ffi-clang/defstruct-from-layout
+                         :av-frame frame-layout)))
 
-
-(def frame-def*
-  (delay
-    (dt-struct/define-datatype!
-      :av-frame
-      (dump->struct-members frame-layout))))
-
-(def codec-def*
-  (delay
-    (dt-struct/define-datatype!
-      :av-codec
-      (dump->struct-members codec-layout))))
-
-
-(defn check-struct-def!
-  [struct-def layout]
-  (let [members (dump->struct-members layout)
-        dtype-members (:data-layout struct-def)]
-    (->>
-     (map (fn [smem dmem]
-            (when-not (== (long (:calculated-offset smem))
-                          (long (:offset dmem)))
-              (errors/throwf "mismatch - expected %s got %s"
-                             smem dmem)))
-          members dtype-members)
-     (remove nil?)
-     (seq))))
+(def codec-def* (delay (ffi-clang/defstruct-from-layout
+                         :av-codec codec-layout)))

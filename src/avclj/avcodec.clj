@@ -1,11 +1,10 @@
-(ns avclj.ffi
+(ns avclj.avcodec
   ;;Getting the context layout correct requires it's own file!!
   (:require [avclj.av-context :as av-context]
             [avclj.av-error :as av-error]
-            [avclj.pixfmt :as av-pixfmt]
+            [avclj.av-pixfmt :as av-pixfmt]
             [tech.v3.datatype :as dtype]
             [tech.v3.datatype.ffi :as dt-ffi]
-            [tech.v3.datatype.struct :as dt-struct]
             [tech.v3.datatype.ffi.size-t :as ffi-size-t]
             [tech.v3.datatype.native-buffer :as native-buffer]
             [tech.v3.datatype.errors :as errors]
@@ -99,14 +98,12 @@
 
 ;;Safe to call on uninitialized library.  If the library is initialized, however,
 ;;a new library instance is created from the latest avcodec-fns
-(dt-ffi/library-singelton-reset! lib)
+(dt-ffi/library-singleton-reset! lib)
 
-(defn set-library!
-  [libpath]
-  (dt-ffi/library-singelton-set! lib libpath))
+
 (defn- find-avcodec-fn
   [fn-kwd]
-  (dt-ffi/library-singelton-find-fn lib fn-kwd))
+  (dt-ffi/library-singleton-find-fn lib fn-kwd))
 
 
 (declare str-error)
@@ -114,15 +111,17 @@
 
 (defmacro check-error
   [error-val]
-  `(errors/when-not-errorf
-    (>= ~error-val 0)
-    "Exception calling avcodec: (%d) - \"%s\""
-    ~error-val (if-let [err-name#  (get av-error/value->error-map ~error-val)]
-                 err-name#
-                 (str-error ~error-val))))
+  `(do
+     (errors/when-not-errorf
+      (>= ~error-val 0)
+      "Exception calling avcodec: (%d) - \"%s\""
+      ~error-val (if-let [err-name#  (get av-error/value->error-map ~error-val)]
+                   err-name#
+                   (str-error ~error-val)))
+     ~error-val))
 
 
-(dt-ffi/define-library-functions avclj.ffi/avcodec-fns find-avcodec-fn check-error)
+(dt-ffi/define-library-functions avclj.avcodec/avcodec-fns find-avcodec-fn check-error)
 
 
 (defn str-error
@@ -139,21 +138,11 @@
 
 (defn initialize!
   []
-  (if (nil? @library*)
+  (if (nil? (dt-ffi/library-singleton-library lib))
     (do
-      (set-library! "avcodec")
+      (dt-ffi/library-singleton-set! lib "avcodec")
       :ok)
-    :already-initialized!))
-
-
-(defn ptr->struct
-  [struct-type ptr-type]
-  (let [n-bytes (:datatype-size (dt-struct/get-struct-def struct-type))
-        src-ptr (dt-ffi/->pointer ptr-type)
-        nbuf (native-buffer/wrap-address (.address src-ptr)
-                                         n-bytes
-                                         src-ptr)]
-    (dt-struct/inplace-new-struct struct-type nbuf)))
+    :already-initialized))
 
 
 (defn- read-codec-pixfmts
@@ -167,13 +156,13 @@
 (defn expand-codec
   [codec-ptr]
   (when codec-ptr
-    (let [codec (ptr->struct (:datatype-name @av-context/codec-def*) codec-ptr)]
+    (let [codec (dt-ffi/ptr->struct (:datatype-name @av-context/codec-def*) codec-ptr)]
       {:codec codec-ptr
        :name (dt-ffi/c->string (Pointer. (:name codec)))
        :long-name (dt-ffi/c->string (Pointer. (:long-name codec)))
-       :media-type (:media-type codec)
+       :media-type (:type codec)
        :pix-fmts (read-codec-pixfmts (:pix-fmts codec))
-       :codec-id (:codec-id codec)
+       :codec-id (:id codec)
        :encoder? (== 1 (long (av_codec_is_encoder codec-ptr)))
        :decoder? (== 1 (long (av_codec_is_decoder codec-ptr)))})))
 
@@ -211,7 +200,7 @@
 (defn alloc-context
   ^Map []
   (->> (avcodec_alloc_context3 nil)
-       (ptr->struct (:datatype-name @av-context/context-def*))))
+       (dt-ffi/ptr->struct (:datatype-name @av-context/context-def*))))
 
 
 (defn free-context
@@ -226,7 +215,7 @@
 (defn alloc-packet
   ^Map []
   (->> (av_packet_alloc)
-       (ptr->struct (:datatype-name @av-context/packet-def*))))
+       (dt-ffi/ptr->struct (:datatype-name @av-context/packet-def*))))
 
 
 (defn free-packet
@@ -241,7 +230,7 @@
 (defn alloc-frame
   ^Map []
   (->> (av_frame_alloc)
-       (ptr->struct (:datatype-name @av-context/frame-def*))))
+       (dt-ffi/ptr->struct (:datatype-name @av-context/frame-def*))))
 
 
 (defn free-frame

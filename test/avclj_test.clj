@@ -32,8 +32,8 @@
 (defn encode-demo
   ([{:keys [encoder-name
             output-fname]
-     :or {encoder-name "mpeg4"
-          output-fname "test-video.mpeg4"}}]
+     :or {encoder-name "mp4"
+          output-fname "test-video.mp4"}}]
    (avclj/initialize!)
    (with-open [encoder (avclj/make-video-encoder 256 256 output-fname
                                                  {:encoder-name encoder-name})]
