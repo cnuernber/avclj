@@ -15,4 +15,4 @@ libavcodec58 - FFmpeg library with de/encoders for audio/video codecs - runtime 
 ```
 
 * [example encoder](test/avclj_test.clj)
-* [API documentation](https://github.com/cnuernber/avclj)
+* [API documentation](https://cnuernber.github.io/avclj/)
