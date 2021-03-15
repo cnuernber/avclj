@@ -288,7 +288,6 @@ SPixFmt g_table[] = {
 
 unsigned int n_pixfmts = sizeof(g_table) / sizeof(*g_table);
 
-
 int main( int c, char** v) {
   printf("{\n");
   for (int idx = 0; idx < n_pixfmts; ++idx) {

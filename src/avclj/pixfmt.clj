@@ -1,5 +1,6 @@
 (ns avclj.pixfmt
-  (:require [tech.v3.datatype.errors :as errors]))
+  (:require [tech.v3.datatype.errors :as errors]
+            [clojure.set :as set]))
 
 
 (def pixfmt-name-value-map
@@ -283,3 +284,19 @@
   (if-let [retval (get pixfmt-name-value-map pixfmt)]
     retval
     (errors/throwf "Unrecognized pixel format: %s" pixfmt)))
+
+
+(def pixfmt-value-name-multi-map (->> pixfmt-name-value-map
+                                      (map (fn [[k v]]
+                                             [v k]))
+                                      (group-by first)
+                                      (map (fn [[k vs]]
+                                             [k (mapv second vs)]))
+                                      (into {})))
+
+
+(defn value->pixfmt
+  [pixval]
+  (if-let [retval (get pixfmt-value-name-multi-map pixval)]
+    retval
+    [(format "Unrecognized pixfmt %s" pixval)]))

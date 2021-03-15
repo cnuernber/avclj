@@ -321,3 +321,118 @@
       1052 |   int discard_damaged_percentage
            | [sizeof=1056, dsize=1056, align=8,
            |  nvsize=1056, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct AVPacket
+         0 |   AVBufferRef * buf
+         8 |   int64_t pts
+        16 |   int64_t dts
+        24 |   uint8_t * data
+        32 |   int size
+        36 |   int stream_index
+        40 |   int flags
+        48 |   AVPacketSideData * side_data
+        56 |   int side_data_elems
+        64 |   int64_t duration
+        72 |   int64_t pos
+        80 |   int64_t convergence_duration
+           | [sizeof=88, dsize=88, align=8,
+           |  nvsize=88, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct AVFrame
+         0 |   uint8_t *[8] data
+        64 |   int [8] linesize
+        96 |   uint8_t ** extended_data
+       104 |   int width
+       108 |   int height
+       112 |   int nb_samples
+       116 |   int format
+       120 |   int key_frame
+       124 |   enum AVPictureType pict_type
+       128 |   struct AVRational sample_aspect_ratio
+       128 |     int num
+       132 |     int den
+       136 |   int64_t pts
+       144 |   int64_t pkt_pts
+       152 |   int64_t pkt_dts
+       160 |   int coded_picture_number
+       164 |   int display_picture_number
+       168 |   int quality
+       176 |   void * opaque
+       184 |   uint64_t [8] error
+       248 |   int repeat_pict
+       252 |   int interlaced_frame
+       256 |   int top_field_first
+       260 |   int palette_has_changed
+       264 |   int64_t reordered_opaque
+       272 |   int sample_rate
+       280 |   uint64_t channel_layout
+       288 |   AVBufferRef *[8] buf
+       352 |   AVBufferRef ** extended_buf
+       360 |   int nb_extended_buf
+       368 |   AVFrameSideData ** side_data
+       376 |   int nb_side_data
+       380 |   int flags
+       384 |   enum AVColorRange color_range
+       388 |   enum AVColorPrimaries color_primaries
+       392 |   enum AVColorTransferCharacteristic color_trc
+       396 |   enum AVColorSpace colorspace
+       400 |   enum AVChromaLocation chroma_location
+       408 |   int64_t best_effort_timestamp
+       416 |   int64_t pkt_pos
+       424 |   int64_t pkt_duration
+       432 |   AVDictionary * metadata
+       440 |   int decode_error_flags
+       444 |   int channels
+       448 |   int pkt_size
+       456 |   int8_t * qscale_table
+       464 |   int qstride
+       468 |   int qscale_type
+       472 |   AVBufferRef * qp_table_buf
+       480 |   AVBufferRef * hw_frames_ctx
+       488 |   AVBufferRef * opaque_ref
+       496 |   size_t crop_top
+       504 |   size_t crop_bottom
+       512 |   size_t crop_left
+       520 |   size_t crop_right
+       528 |   AVBufferRef * private_ref
+           | [sizeof=536, dsize=536, align=8,
+           |  nvsize=536, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct AVCodec
+         0 |   const char * name
+         8 |   const char * long_name
+        16 |   enum AVMediaType type
+        20 |   enum AVCodecID id
+        24 |   int capabilities
+        32 |   const AVRational * supported_framerates
+        40 |   const enum AVPixelFormat * pix_fmts
+        48 |   const int * supported_samplerates
+        56 |   const enum AVSampleFormat * sample_fmts
+        64 |   const uint64_t * channel_layouts
+        72 |   uint8_t max_lowres
+        80 |   const AVClass * priv_class
+        88 |   const AVProfile * profiles
+        96 |   const char * wrapper_name
+       104 |   int priv_data_size
+       112 |   struct AVCodec * next
+       120 |   int (*)(AVCodecContext *) init_thread_copy
+       128 |   int (*)(AVCodecContext *, const AVCodecContext *) update_thread_context
+       136 |   const AVCodecDefault * defaults
+       144 |   void (*)(struct AVCodec *) init_static_data
+       152 |   int (*)(AVCodecContext *) init
+       160 |   int (*)(AVCodecContext *, uint8_t *, int, const struct AVSubtitle *) encode_sub
+       168 |   int (*)(AVCodecContext *, AVPacket *, const AVFrame *, int *) encode2
+       176 |   int (*)(AVCodecContext *, void *, int *, AVPacket *) decode
+       184 |   int (*)(AVCodecContext *) close
+       192 |   int (*)(AVCodecContext *, const AVFrame *) send_frame
+       200 |   int (*)(AVCodecContext *, AVPacket *) receive_packet
+       208 |   int (*)(AVCodecContext *, AVFrame *) receive_frame
+       216 |   void (*)(AVCodecContext *) flush
+       224 |   int caps_internal
+       232 |   const char * bsfs
+       240 |   const struct AVCodecHWConfigInternal ** hw_configs
+           | [sizeof=248, dsize=248, align=8,
+           |  nvsize=248, nvalign=8]

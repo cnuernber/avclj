@@ -8,7 +8,7 @@
   (:import [java.util Map]))
 
 (def ^{:doc "Record layout produced using clang -fdump-record-layout option during compilation"}
-  layout
+  context-layout
   "      0 |   const AVClass * av_class
          8 |   int log_level_offset
         12 |   enum AVMediaType codec_type
@@ -210,19 +210,133 @@
       1052 |   int discard_damaged_percentage")
 
 
+(def frame-layout
+  "      0 |   uint8_t *[8] data
+        64 |   int [8] linesize
+        96 |   uint8_t ** extended_data
+       104 |   int width
+       108 |   int height
+       112 |   int nb_samples
+       116 |   int format
+       120 |   int key_frame
+       124 |   enum AVPictureType pict_type
+       128 |   struct AVRational sample_aspect_ratio
+       128 |     int num
+       132 |     int den
+       136 |   int64_t pts
+       144 |   int64_t pkt_pts
+       152 |   int64_t pkt_dts
+       160 |   int coded_picture_number
+       164 |   int display_picture_number
+       168 |   int quality
+       176 |   void * opaque
+       184 |   uint64_t [8] error
+       248 |   int repeat_pict
+       252 |   int interlaced_frame
+       256 |   int top_field_first
+       260 |   int palette_has_changed
+       264 |   int64_t reordered_opaque
+       272 |   int sample_rate
+       280 |   uint64_t channel_layout
+       288 |   AVBufferRef *[8] buf
+       352 |   AVBufferRef ** extended_buf
+       360 |   int nb_extended_buf
+       368 |   AVFrameSideData ** side_data
+       376 |   int nb_side_data
+       380 |   int flags
+       384 |   enum AVColorRange color_range
+       388 |   enum AVColorPrimaries color_primaries
+       392 |   enum AVColorTransferCharacteristic color_trc
+       396 |   enum AVColorSpace colorspace
+       400 |   enum AVChromaLocation chroma_location
+       408 |   int64_t best_effort_timestamp
+       416 |   int64_t pkt_pos
+       424 |   int64_t pkt_duration
+       432 |   AVDictionary * metadata
+       440 |   int decode_error_flags
+       444 |   int channels
+       448 |   int pkt_size
+       456 |   int8_t * qscale_table
+       464 |   int qstride
+       468 |   int qscale_type
+       472 |   AVBufferRef * qp_table_buf
+       480 |   AVBufferRef * hw_frames_ctx
+       488 |   AVBufferRef * opaque_ref
+       496 |   size_t crop_top
+       504 |   size_t crop_bottom
+       512 |   size_t crop_left
+       520 |   size_t crop_right
+       528 |   AVBufferRef * private_ref")
+
+
+(def packet-layout
+  "      0 |   AVBufferRef * buf
+         8 |   int64_t pts
+        16 |   int64_t dts
+        24 |   uint8_t * data
+        32 |   int size
+        36 |   int stream_index
+        40 |   int flags
+        48 |   AVPacketSideData * side_data
+        56 |   int side_data_elems
+        64 |   int64_t duration
+        72 |   int64_t pos
+        80 |   int64_t convergence_duration")
+
+(def codec-layout
+  "      0 |   const char * name
+         8 |   const char * long_name
+        16 |   enum AVMediaType type
+        20 |   enum AVCodecID id
+        24 |   int capabilities
+        32 |   const AVRational * supported_framerates
+        40 |   const enum AVPixelFormat * pix_fmts
+        48 |   const int * supported_samplerates
+        56 |   const enum AVSampleFormat * sample_fmts
+        64 |   const uint64_t * channel_layouts
+        72 |   uint8_t max_lowres
+        80 |   const AVClass * priv_class
+        88 |   const AVProfile * profiles
+        96 |   const char * wrapper_name
+       104 |   int priv_data_size
+       112 |   struct AVCodec * next
+       120 |   int (*)(AVCodecContext *) init_thread_copy
+       128 |   int (*)(AVCodecContext *, const AVCodecContext *) update_thread_context
+       136 |   const AVCodecDefault * defaults
+       144 |   void (*)(struct AVCodec *) init_static_data
+       152 |   int (*)(AVCodecContext *) init
+       160 |   int (*)(AVCodecContext *, uint8_t *, int, const struct AVSubtitle *) encode_sub
+       168 |   int (*)(AVCodecContext *, AVPacket *, const AVFrame *, int *) encode2
+       176 |   int (*)(AVCodecContext *, void *, int *, AVPacket *) decode
+       184 |   int (*)(AVCodecContext *) close
+       192 |   int (*)(AVCodecContext *, const AVFrame *) send_frame
+       200 |   int (*)(AVCodecContext *, AVPacket *) receive_packet
+       208 |   int (*)(AVCodecContext *, AVFrame *) receive_frame
+       216 |   void (*)(AVCodecContext *) flush
+       224 |   int caps_internal
+       232 |   const char * bsfs
+       240 |   const struct AVCodecHWConfigInternal ** hw_configs")
+
+
 ;;Exactly three spaces, else we are into the inner stuff.
 (def line-regex #"\s+(\d+)\s\|\s\s\s(\w.+)")
+(def ary-regex #"\[(\d+)\]")
+
 (defn line-struct-dec
-  [str-line]
+  [^String str-line]
   (let [line-split (s/split str-line #"\s+")
-        member-name (csk/->kebab-case-keyword (last line-split))]
+        member-name (csk/->kebab-case-keyword (last line-split))
+        n-elems (if-let [ary-len (re-find ary-regex str-line)]
+                  (Integer/parseInt (second ary-len))
+                  1)]
     (merge
-     {:name member-name}
+     {:name member-name
+      :n-elems n-elems}
      (cond
        (.contains str-line "(*)(")
        {:datatype (ffi-size-t/ptr-t-type)}
        (.contains str-line "*")
-       {:datatype (ffi-size-t/ptr-t-type)}
+       (merge {:datatype (ffi-size-t/ptr-t-type)})
        (.startsWith str-line "struct")
        {:datatype (->> (s/split str-line #"\s+")
                        (second)
@@ -247,22 +361,13 @@
                           :uint64
                           (= ltype "float")
                           :float32
+                          (= ltype "size_t")
+                          (ffi-size-t/size-t-type)
+                          (= ltype "uint8_t")
+                          :uint8
                           :else
-                          (errors/throwf "Failed to parse dtype: %s" str-line))
-             line-split (if unsigned?
-                          (drop 2 line-split)
-                          (rest line-split))
-             ;;drop the member name
-             line-split (drop-last line-split)
-             n-elems (if (seq line-split)
-                       (try
-                         (-> (re-find #"\d+" (first line-split))
-                             (Integer/parseInt))
-                         (catch Exception e
-                           (errors/throwf "Failed to parse n-elems %s" str-line)))
-                       1)]
-         {:datatype line-dtype
-          :n-elems n-elems})))))
+                          (errors/throwf "Failed to parse dtype: %s" str-line))]
+         {:datatype line-dtype})))))
 
 
 (defn dump->struct-members
@@ -276,26 +381,47 @@
        (remove nil?)))
 
 
-(dt-struct/define-datatype! :av-rational [{:name "num" :datatype :int32}
-                                          {:name "den" :datatype :int32}])
+(dt-struct/define-datatype! :av-rational [{:name :num :datatype :int32}
+                                          {:name :den :datatype :int32}])
+
 
 (def context-def*
   (delay
     (dt-struct/define-datatype!
       :av-context
-      (dump->struct-members layout))))
+      (dump->struct-members context-layout))))
 
 
-(defn check-context-def!
-  []
+(def packet-def*
+  (delay
+    (dt-struct/define-datatype!
+      :av-packet
+      (dump->struct-members packet-layout))))
+
+
+(def frame-def*
+  (delay
+    (dt-struct/define-datatype!
+      :av-frame
+      (dump->struct-members frame-layout))))
+
+(def codec-def*
+  (delay
+    (dt-struct/define-datatype!
+      :av-codec
+      (dump->struct-members codec-layout))))
+
+
+(defn check-struct-def!
+  [struct-def layout]
   (let [members (dump->struct-members layout)
-        dtype-members (:data-layout @context-def*)]
+        dtype-members (:data-layout struct-def)]
     (->>
      (map (fn [smem dmem]
             (when-not (== (long (:calculated-offset smem))
                           (long (:offset dmem)))
               (errors/throwf "mismatch - expected %s got %s"
-                             smem dmem))
-            ) members dtype-members)
+                             smem dmem)))
+          members dtype-members)
      (remove nil?)
      (seq))))

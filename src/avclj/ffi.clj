@@ -1,6 +1,8 @@
 (ns avclj.ffi
   ;;Getting the context layout correct requires it's own file!!
   (:require [avclj.av-context :as av-context]
+            [avclj.av-error :as av-error]
+            [avclj.pixfmt :as av-pixfmt]
             [tech.v3.datatype :as dtype]
             [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype.struct :as dt-struct]
@@ -9,7 +11,8 @@
             [tech.v3.datatype.errors :as errors]
             [tech.v3.resource :as resource]
             [clojure.tools.logging :as log])
-  (:import [tech.v3.datatype.ffi Pointer]))
+  (:import [tech.v3.datatype.ffi Pointer]
+           [java.util Map]))
 
 
 (def avcodec-fns
@@ -22,7 +25,11 @@
    :av_codec_iterate {:rettype :pointer
                       :argtypes [['opaque :pointer]]
                       :doc "Iterate through av code objects.  Returns an AVCodec*"}
-
+   :av_strerror {:rettype :int32
+                 :argtypes [['errnum :int32]
+                            ['errbuf :pointer]
+                            ['errbuf-size :size-t]]
+                 :doc "Get a string description for an error."}
    :av_codec_is_encoder {:rettype :int32
                          :argtypes [['codec :pointer]]
                          :doc "Return nonzero if encoder"}
@@ -51,95 +58,83 @@
                    :argtypes [['c :pointer]
                               ['codec :pointer]
                               ['opts :pointer?]]
+                   :check-error? true
                    :doc "Open the codec with the context"}
-   :av_packet_alloc {:rettype :pointer}
+   :av_packet_alloc {:rettype :pointer
+                     :doc "allocate an av packet"}
+   :av_packet_free {:rettype :void
+                    :argtypes [['packet :pointer]]
+                    :doc "free an av packet"}
+   :av_frame_alloc {:rettype :pointer
+                    :doc "allocate an av frame"}
+   :av_frame_free {:rettype :void
+                   :argtypes [['frame :pointer]]
+                   :doc "free an av frame"}
+   :av_frame_get_buffer {:rettype :int32
+                         :check-error? true
+                         :argtypes [['frame :pointer]
+                                    ['align :int32]]
+                         :doc "Allocate the frame's data buffer"}
+   :av_frame_make_writable {:rettype :int32
+                            :check-error? true
+                            :argtypes [['frame :pointer]]
+                            :doc "Ensure frame is writable"}
+   :avcodec_send_frame {:rettype :int32
+                        :check-error? true
+                        :argtypes [['ctx :pointer]
+                                   ['frame :pointer?]]
+                        :doc "Send a frame to encode.  A nil frame flushes the buffer"}
+   ;;This returns errors during normal course of operation
+   :avcodec_receive_packet {:rettype :int32
+                            :argtypes [['ctx :pointer]
+                                       ['packet :pointer]]
+                            :doc "Get an encoded packet.  Packet must be unref-ed"}
+   :av_packet_unref {:rettype :int32
+                     :check-error? true
+                     :argtypes [['packet :pointer]]
+                     :doc "Unref a packet after from receive frame"}})
 
-   })
 
+(defonce ^:private lib (dt-ffi/library-singleton #'avcodec-fns))
 
-
-(def ^:private lib-def* (delay (dt-ffi/define-library avcodec-fns)))
-
-(defonce ^:private library* (atom nil))
-(defonce ^:private library-path* (atom nil))
-
-
-(defn reset-library!
-  []
-  (when @library-path*
-    (reset! library* (dt-ffi/instantiate-library @lib-def*
-                                                 (:libpath @library-path*)))))
-
-
-(reset-library!)
-
+;;Safe to call on uninitialized library.  If the library is initialized, however,
+;;a new library instance is created from the latest avcodec-fns
+(dt-ffi/library-singelton-reset! lib)
 
 (defn set-library!
   [libpath]
-  (when @library*
-    (log/warnf "Python library is being reinitialized to (%s).  Is this what you want?"
-               libpath))
-  (reset! library-path* {:libpath libpath})
-  (reset-library!))
-
+  (dt-ffi/library-singelton-set! lib libpath))
 (defn- find-avcodec-fn
   [fn-kwd]
-  (let [avcodec @library*]
-    (errors/when-not-error
-     avcodec
-     "Library not found.  Has set-library! been called?")
-    (if-let [retval (fn-kwd @avcodec)]
-      retval
-      (errors/throwf "Python function %s not found" (symbol (name fn-kwd))))))
+  (dt-ffi/library-singelton-find-fn lib fn-kwd))
 
 
-(defmacro define-avcodec-functions
-  []
-  `(do
-     ~@(->>
-        avcodec-fns
-        (map
-         (fn [[fn-name {:keys [rettype argtypes] :as fn-data}]]
-           (let [fn-symbol (symbol (name fn-name))
-                 requires-resctx? (first (filter #(= :string %)
-                                                 (concat (map second argtypes)
-                                                         [rettype])))]
-             `(defn ~fn-symbol
-                ~(:doc fn-data "No documentation!")
-                ~(mapv first argtypes)
-                (let [~'ifn (find-avcodec-fn ~fn-name)]
-                  (do
-                    ~(if requires-resctx?
-                       `(resource/stack-resource-context
-                         (let [~'retval
-                               (~'ifn ~@(map
-                                         (fn [[argname argtype]]
-                                           (cond
-                                             (#{:int8 :int16 :int32 :int64} argtype)
-                                             `(long ~argname)
-                                             (#{:float32 :float64} argtype)
-                                             `(double ~argname)
-                                             (= :string argtype)
-                                             `(dt-ffi/string->c ~argname)
-                                             :else
-                                             argname))
-                                         argtypes))]
-                           ~(if (= :string rettype)
-                              `(dt-ffi/c->string ~'retval)
-                              `~'retval)))
-                       `(~'ifn ~@(map (fn [[argname argtype]]
-                                        (cond
-                                          (#{:int8 :int16 :int32 :int64} argtype)
-                                          `(long ~argname)
-                                          (#{:float32 :float64} argtype)
-                                          `(double ~argname)
-                                          (= :string argtype)
-                                          `(dt-ffi/string->c ~argname)
-                                          :else
-                                          argname))
-                                      argtypes))))))))))))
+(declare str-error)
 
-(define-avcodec-functions)
+
+(defmacro check-error
+  [error-val]
+  `(errors/when-not-errorf
+    (>= ~error-val 0)
+    "Exception calling avcodec: (%d) - \"%s\""
+    ~error-val (if-let [err-name#  (get av-error/value->error-map ~error-val)]
+                 err-name#
+                 (str-error ~error-val))))
+
+
+(dt-ffi/define-library-functions avclj.ffi/avcodec-fns find-avcodec-fn check-error)
+
+
+(defn str-error
+  [error-num]
+  (let [charbuf (native-buffer/malloc 64 {:resource-type nil})]
+    (try
+      (let [res (av_strerror error-num charbuf 64)]
+        (if (>= (long res) 0)
+          (dt-ffi/c->string charbuf)
+          (format "Unreconized error num: %s" error-num)))
+      (finally
+        (native-buffer/free charbuf)))))
 
 
 (defn initialize!
@@ -149,18 +144,6 @@
       (set-library! "avcodec")
       :ok)
     :already-initialized!))
-
-
-(def codec-structdef*
-  (delay (dt-struct/define-datatype!
-           :avcodec [{:name :name
-                      :datatype (ffi-size-t/ptr-t-type)}
-                     {:name :long-name
-                      :datatype (ffi-size-t/ptr-t-type)}
-                     {:name :media-type
-                      :datatype :int32}
-                     {:name :codec-id
-                      :datatype :int32}])))
 
 
 (defn ptr->struct
@@ -173,15 +156,23 @@
     (dt-struct/inplace-new-struct struct-type nbuf)))
 
 
+(defn- read-codec-pixfmts
+  [addr]
+  (let [nbuf (-> (native-buffer/wrap-address addr 4096 nil)
+                 (native-buffer/set-native-datatype :int32))]
+    (->> (take-while #(not= -1 %) nbuf)
+         (mapv av-pixfmt/value->pixfmt))))
+
+
 (defn expand-codec
   [codec-ptr]
-  @codec-structdef*
   (when codec-ptr
-    (let [codec (ptr->struct :avcodec codec-ptr)]
+    (let [codec (ptr->struct (:datatype-name @av-context/codec-def*) codec-ptr)]
       {:codec codec-ptr
        :name (dt-ffi/c->string (Pointer. (:name codec)))
        :long-name (dt-ffi/c->string (Pointer. (:long-name codec)))
        :media-type (:media-type codec)
+       :pix-fmts (read-codec-pixfmts (:pix-fmts codec))
        :codec-id (:codec-id codec)
        :encoder? (== 1 (long (av_codec_is_encoder codec-ptr)))
        :decoder? (== 1 (long (av_codec_is_decoder codec-ptr)))})))
@@ -215,3 +206,48 @@
 (defn find-decoder
   [codec-id]
   (expand-codec (avcodec_find_decoder codec-id)))
+
+
+(defn alloc-context
+  ^Map []
+  (->> (avcodec_alloc_context3 nil)
+       (ptr->struct (:datatype-name @av-context/context-def*))))
+
+
+(defn free-context
+  [ctx]
+  (resource/stack-resource-context
+   (let [ctx-ptr (->> (dt-ffi/->pointer ctx)
+                      (.address)
+                      (dt-ffi/make-ptr :pointer))]
+     (avcodec_free_context ctx-ptr))))
+
+
+(defn alloc-packet
+  ^Map []
+  (->> (av_packet_alloc)
+       (ptr->struct (:datatype-name @av-context/packet-def*))))
+
+
+(defn free-packet
+  [pkt]
+  (resource/stack-resource-context
+   (let [pkt-ptr (->> (dt-ffi/->pointer pkt)
+                      (.address)
+                      (dt-ffi/make-ptr :pointer))]
+     (av_packet_free pkt-ptr))))
+
+
+(defn alloc-frame
+  ^Map []
+  (->> (av_frame_alloc)
+       (ptr->struct (:datatype-name @av-context/frame-def*))))
+
+
+(defn free-frame
+  [pkt]
+  (resource/stack-resource-context
+   (let [pkt-ptr (->> (dt-ffi/->pointer pkt)
+                      (.address)
+                      (dt-ffi/make-ptr :pointer))]
+     (av_frame_free pkt-ptr))))
