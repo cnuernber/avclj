@@ -1,5 +1,37 @@
 (ns avclj
-  "libavcodec (FFMPEG) bindings for Clojure"
+  "libavcodec (FFMPEG) bindings for Clojure.
+
+```clojure
+
+user> (require '[avclj :as avclj])
+nil
+user> (avclj/initialize!)
+:ok
+user> (require '[tech.v3.tensor :as dtt])
+nil
+user> (defn img-tensor
+  [shape ^long offset]
+  (dtt/compute-tensor shape
+                      (fn [^long y ^long x ^long c]
+                        (let [ymod (-> (quot (+ y offset) 32)
+                                       (mod 2))
+                              xmod (-> (quot (+ x offset) 32)
+                                       (mod 2))]
+                          (if (and (== 0 xmod)
+                                   (== 0 ymod))
+                            255
+                            0)))
+                      :uint8))
+#'user/img-tensor
+nil
+user> (let [encoder-name \"mp4\"
+            output-fname \"file://test/data/test-video.mp4\"]
+        (with-open [encoder (avclj/make-video-encoder 256 256 output-fname
+                                                      {:encoder-name encoder-name})]
+          (dotimes [iter 125]
+            (avclj/encode-frame! encoder (img-tensor [256 256 3] iter)))))
+nil
+```"
   (:require [tech.v3.datatype :as dtype]
             [tech.v3.datatype.struct :as dt-struct]
             [tech.v3.datatype.errors :as errors]
@@ -35,7 +67,8 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
     (log/debug "h264 encoding enabled")
     (log/debug "h264 encoding disabled"))
   (avcodec/initialize!)
-  (swscale/initialize!))
+  (swscale/initialize!)
+  :ok)
 
 
 (defn encoder-names

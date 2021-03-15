@@ -12,13 +12,15 @@
                              :exclusions [org.ow2.asm/asm-all]}}
    :ns-default tech.v3.libs.lein-codox
    :exec-fn tech.v3.libs.lein-codox/-main
-   :exec-args {:arg-paths [[:aliases :depstar :exec-args]]
-               :description "FFmpeg bindings for Clojure"
+   :exec-args {:description "FFmpeg bindings for Clojure"
                :metadata {:doc/format :markdown}
                :themes [:rdash]
                :source-paths ["src"]
                :output-path "docs"
                :doc-paths ["topics"]
+               :group-id "cnuernber"
+               :artifact-id "avclj"
+               :version "1.00-beta-1"
                :source-uri "https://github.com/cnuernber/avclj/blob/master/{filepath}#L{line}"
                :namespaces [avclj]}}
   :test
