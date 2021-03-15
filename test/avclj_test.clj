@@ -32,11 +32,10 @@
 
 
 (deftest encode-demo
-  (let [encoder-name "mp4"
-        output-fname "file://test/data/test-video.mp4"]
+  (let [output-fname "file://test/data/test-video.mp4"]
     (.delete (java.io.File. "test/data/test-video.mp4"))
     (with-open [encoder (avclj/make-video-encoder 256 256 output-fname
-                                                  {:encoder-name encoder-name})]
+                                                  {:encoder-name-or-id "mpeg4"})]
       (dotimes [iter 125]
         (avclj/encode-frame! encoder (img-tensor [256 256 3] iter))))
     (is (.exists (java.io.File. "test/data/test-video.mp4")))))
