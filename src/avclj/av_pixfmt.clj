@@ -1,4 +1,4 @@
-(ns avclj.pixfmt
+(ns avclj.av-pixfmt
   (:require [tech.v3.datatype.errors :as errors]
             [clojure.set :as set]))
 
