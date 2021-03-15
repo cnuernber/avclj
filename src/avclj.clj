@@ -1,9 +1,11 @@
 (ns avclj
+  "libavcodec (FFMPEG) bindings for Clojure"
   (:require [tech.v3.datatype :as dtype]
             [tech.v3.datatype.struct :as dt-struct]
             [tech.v3.datatype.errors :as errors]
             [tech.v3.datatype.native-buffer :as native-buffer]
             [tech.v3.datatype.ffi :as dt-ffi]
+            [tech.v3.datatype.dechunk-map :refer [dechunk-map]]
             [tech.v3.tensor :as dtt]
             [tech.v3.io :as io]
             [avclj.avcodec :as avcodec]
@@ -26,6 +28,8 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
 
 
 (defn initialize!
+  "Initialize the library.  Dynamically must find libavcodec and libswscale.  Attempts
+  to load x264 to enable h264 encode."
   []
   (if (dt-ffi/find-library "x264")
     (log/debug "h264 encoding enabled")
@@ -35,6 +39,7 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
 
 
 (defn encoder-names
+  "List all of the encoder names"
   []
   (->> (avcodec/list-codecs)
        (filter :encoder?)
@@ -43,6 +48,7 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
 
 
 (defn decoder-names
+  "List all decoder names"
   []
   (->> (avcodec/list-codecs)
        (filter :decoder?)
@@ -51,41 +57,36 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
 
 
 (defn list-codecs
+  "List all available encoder/decoders"
   []
   (avcodec/list-codecs))
 
 
 (defn list-pix-formats
+  "List all available pixel format names"
   []
   (->> (keys av-pixfmt/pixfmt-name-value-map)
        (sort)))
 
 
 (defn raw-frame->tensors
+  "Zero-copy conversion ofa frame to a vector of tensors, one for each of the
+  frame's data planes."
   [^Map frame]
   (let [fheight (long (.get frame :height))]
     ;;frames may be up to 8 planes of data
     (->> (range 8)
-         (map (fn [idx]
-                (let [linesize (long (.get frame [:linesize idx]))]
+         (dechunk-map (juxt identity #(.get frame [:linesize %])))
+         (take-while #(> (long (second %)) 0))
+         (mapv (fn [[idx linesize]]
+                 (let [linesize (long linesize)]
                   (when-not (== 0 linesize)
                     (let [data-ptr (long (.get frame [:data idx]))
-                          nbuf (native-buffer/wrap-address data-ptr
-                                                           (* fheight linesize)
-                                                           frame)]
-                      (dtt/reshape nbuf [fheight linesize]))))))
-         (remove nil?))))
-
-
-(defn struct-member-ptr
-  [data-struct member]
-  (let [data-ptr (dt-ffi/->pointer data-struct)
-        member-offset (-> (dt-struct/offset-of
-                           (dt-struct/get-struct-def (dtype/datatype data-struct))
-                           member)
-                          ;;offset-of returns a pair of offset,datatype
-                          (first))]
-    (Pointer. (+ (.address data-ptr) member-offset))))
+                          nbuf (-> (native-buffer/wrap-address data-ptr
+                                                               (* fheight linesize)
+                                                               frame)
+                                   (native-buffer/set-native-datatype :uint8))]
+                      (dtt/reshape nbuf [fheight linesize])))))))))
 
 
 (deftype Encoder [^Map ctx ^Map packet ^OutputStream ostream
@@ -122,11 +123,11 @@ Input data shapes: %s"
           (do
             (avcodec/av_frame_make_writable encoder-frame)
             (swscale/sws_scale sws-ctx
-                               (struct-member-ptr input-frame :data)
-                               (struct-member-ptr input-frame :linesize)
+                               (dt-ffi/struct-member-ptr input-frame :data)
+                               (dt-ffi/struct-member-ptr input-frame :linesize)
                                0 (:height input-frame)
-                               (struct-member-ptr encoder-frame :data)
-                               (struct-member-ptr encoder-frame :linesize))
+                               (dt-ffi/struct-member-ptr encoder-frame :data)
+                               (dt-ffi/struct-member-ptr encoder-frame :linesize))
             (.put encoder-frame :pts (dec n-frames))
             (avcodec/avcodec_send_frame ctx encoder-frame))))
       (do

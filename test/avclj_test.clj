@@ -28,15 +28,15 @@
     (-> (dtype/copy! tens bufimg)
         (bufimg/save! fname))))
 
+(avclj/initialize!)
 
-(defn encode-demo
-  ([{:keys [encoder-name
-            output-fname]
-     :or {encoder-name "mp4"
-          output-fname "test-video.mp4"}}]
-   (avclj/initialize!)
-   (with-open [encoder (avclj/make-video-encoder 256 256 output-fname
-                                                 {:encoder-name encoder-name})]
-     (dotimes [iter 125]
-       (avclj/encode-frame! encoder (img-tensor [256 256 3] iter)))))
-  ([] (encode-demo nil)))
+
+(deftest encode-demo
+  (let [encoder-name "mp4"
+        output-fname "file://test/data/test-video.mp4"]
+    (.delete (java.io.File. "test/data/test-video.mp4"))
+    (with-open [encoder (avclj/make-video-encoder 256 256 output-fname
+                                                  {:encoder-name encoder-name})]
+      (dotimes [iter 125]
+        (avclj/encode-frame! encoder (img-tensor [256 256 3] iter))))
+    (is (.exists (java.io.File. "test/data/test-video.mp4")))))
