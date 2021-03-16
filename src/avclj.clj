@@ -212,6 +212,7 @@ Input data shapes: %s"
         (recur (long (avcodec/avcodec_receive_packet ctx packet))))))
   java.lang.AutoCloseable
   (close [this]
+    (println (into {} (:avg-frame-rate stream)))
     (encode-frame! this nil)
     (avformat/av_write_trailer avfmt-ctx)
     (avcodec/free-context ctx)
@@ -316,15 +317,17 @@ Input data shapes: %s"
        (let [opt-dict (when (seq codec-options)
                         (let [dict (avutil/alloc-dict)]
                           (doseq [[k v] codec-options]
-                            (println "setting option" k v)
                             (avutil/set-key-value! dict k v 0))))]
          (avcodec/avcodec_open2 ctx codec-ptr opt-dict))
        (avcodec/avcodec_parameters_from_context
         (Pointer. (:codecpar stream)) ctx)
+       (.put stream :avg-frame-rate framerate)
+       (.put stream :time-base time-base)
        ;;!!This sets the time-base of the stream!!
        (avformat/avformat_write_header avfmt-ctx nil)
        ;;allocate framebuffer
        ;;We do not care about alignment
+       _ (println (into {} (:avg-frame-rate stream)))
        (avcodec/av_frame_get_buffer input-frame 0)
        (when encoder-frame (avcodec/av_frame_get_buffer encoder-frame 0))
        (Encoder. ctx pkt
