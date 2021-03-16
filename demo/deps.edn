@@ -1,0 +1,6 @@
+{:paths ["src" "classes"]
+ :deps {org.clojure/clojure       {:mvn/version "1.10.2" :scope "provided"}
+        cnuernber/avclj           {:git/url "https://github.com/cnuernber/avclj"
+                                   :sha "c53c59a5f70455b4987154d8314ba8ac766d96c7"}
+        org.jetbrains.skija/skija-linux {:mvn/version "0.89.31"}}
+ :mvn/repos {"skija" {:url "https://packages.jetbrains.team/maven/p/skija/maven"}}}
