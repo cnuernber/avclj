@@ -3,7 +3,8 @@
             [avclj.avcodec :refer [check-error]]
             [avclj.av-context :as av-context]
             [tech.v3.resource :as resource])
-  (:import [tech.v3.datatype.ffi Pointer]))
+  (:import [tech.v3.datatype.ffi Pointer]
+           [java.util Map]))
 
 
 (def avformat-def
@@ -29,16 +30,41 @@
                          :argtypes [['avfmt-ctx :pointer]
                                     ['codec :pointer]]
                          :doc "Create a new stream"}
+   :av_write_frame {:rettype :int32
+                    :argtypes [['avfmt-ctx :pointer]
+                               ['packet :pointer]]
+                    :check-error? true
+                    :doc "Write a packet to the output frame.  Does not own packet"}
+   :av_interleaved_write_frame {:rettype :int32
+                                :argtypes [['avfmt-ctx :pointer]
+                                           ['packet :pointer]]
+                                :check-error? true
+                                :doc "Write a packet to the output frame.  Owns packet"}
+   :avformat_write_header {:rettype :int32
+                           :argtypes [['avfmt-ctx :pointer]
+                                      ['options-dict-pptr :pointer?]]
+                           :check-errors? true
+                           :doc "Write the file header"}
+   :av_write_trailer {:rettype :int32
+                      :argtypes [['avfmt-ctx :pointer]]
+                      :check-errors? true
+                      :doc "Write the file trailer"}
    :avio_open2 {:rettype :int32
                 :argtypes [['ctx :pointer]
                            ['url :string]
                            ['flags :int32]
-                           ['int_cp :pointer]
-                           ['options :pointer]]
+                           ['int_cp :pointer?]
+                           ['options :pointer?]]
+                :check-errors? true
                 :doc "Open an io pathway"}
    :avio_close {:rettype :int32
                 :argtypes [['s :pointer]]
+                :check-errors? true
                 :doc "Close the avio context"}
+   :avio_closep {:rettype :int32
+                 :argtypes [['s-ptr :pointer]]
+                 :check-errors? true
+                 :doc "Close a pointer to a pointer to the avio context"}
    })
 
 
@@ -72,6 +98,6 @@
 
 
 (defn new-stream
-  [avfmt-ctx codec]
+  ^Map [avfmt-ctx codec]
   (->> (avformat_new_stream avfmt-ctx codec)
        (dt-ffi/ptr->struct (:datatype-name @av-context/av-stream-def*))))

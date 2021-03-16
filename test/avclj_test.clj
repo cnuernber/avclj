@@ -1,6 +1,7 @@
 (ns avclj-test
   (:require [clojure.test :refer [deftest is]]
             [avclj :as avclj]
+            [avclj.av-codec-ids :as codec-ids]
             [tech.v3.tensor :as dtt]
             [tech.v3.datatype :as dtype]
             [tech.v3.libs.buffered-image :as bufimg]))
@@ -32,11 +33,12 @@
 
 
 (deftest encode-demo
-  (let [encoder-name "mpeg4"
-        output-fname "file://test/data/test-video.mp4"]
-    (.delete (java.io.File. "test/data/test-video.mp4"))
-    (with-open [encoder (avclj/make-video-encoder 256 256 output-fname
-                                                  {:encoder-name encoder-name})]
-      (dotimes [iter 125]
+  (let [encoder-name codec-ids/AV_CODEC_ID_H264
+        output-fname "test/data/test-video.mp4"]
+    (.delete (java.io.File. output-fname))
+    (with-open [encoder (avclj/make-video-encoder
+                         256 256 output-fname
+                         {:encoder-name encoder-name})]
+      (dotimes [iter 120]
         (avclj/encode-frame! encoder (img-tensor [256 256 3] iter))))
-    (is (.exists (java.io.File. "test/data/test-video.mp4")))))
+    (is (.exists (java.io.File. output-fname)))))

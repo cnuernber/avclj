@@ -18,6 +18,20 @@
    :av_dict_free {:rettype :void
                   :argtypes [['pm :pointer]]
                   :doc "Free the dict and associated keys"}
+   :av_rescale {:rettype :int64
+                :argtypes [['a :int64]
+                           ['b :int64]
+                           ['c :int64]]
+                :doc "/**
+ * Rescale a 64-bit integer with rounding to nearest.
+ *
+ * The operation is mathematically equivalent to `a * b / c`, but writing that
+ * directly can overflow.
+ *
+ * This function is equivalent to av_rescale_rnd() with #AV_ROUND_NEAR_INF.
+ *
+ * @see av_rescale_rnd(), av_rescale_q(), av_rescale_q_rnd()
+ */"}
 
    })
 

@@ -1,6 +1,6 @@
 {:paths ["src" "classes"]
  :deps {org.clojure/clojure            {:mvn/version "1.10.2" :scope "provided"}
-        cnuernber/dtype-next           {:mvn/version "6.15"}
+        cnuernber/dtype-next           {:mvn/version "6.16"}
         techascent/tech.io             {:mvn/version "4.03"}
         net.java.dev.jna/jna           {:mvn/version "5.7.0"}}
  :aliases
@@ -22,7 +22,8 @@
                :artifact-id "avclj"
                :version "1.00-beta-1"
                :source-uri "https://github.com/cnuernber/avclj/blob/master/{filepath}#L{line}"
-               :namespaces [avclj]}}
+               :namespaces [avclj
+                            avclj.codec-ids]}}
   :test
   {:extra-deps {com.cognitect/test-runner
                 {:git/url "https://github.com/cognitect-labs/test-runner"

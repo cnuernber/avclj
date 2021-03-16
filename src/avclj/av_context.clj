@@ -537,7 +537,8 @@
                                    )})))
 
 (def av-stream-def* (delay
-                      ;;av-stream relies on av-packet
+                      ;;av-stream relies on av-packet, av-probe
                       @packet-def*
+                      @av-probe-def*
                       (ffi-clang/defstruct-from-layout
                         :av-stream av-stream-layout)))

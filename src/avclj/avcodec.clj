@@ -203,9 +203,11 @@
 
 
 (defn alloc-context
-  ^Map []
-  (->> (avcodec_alloc_context3 nil)
-       (dt-ffi/ptr->struct (:datatype-name @av-context/context-def*))))
+  (^Map [codec-ptr]
+   (->> (avcodec_alloc_context3 codec-ptr)
+        (dt-ffi/ptr->struct (:datatype-name @av-context/context-def*))))
+  (^Map []
+   (alloc-context nil)))
 
 
 (defn free-context

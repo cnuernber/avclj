@@ -39,6 +39,7 @@ nil
             [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype.dechunk-map :refer [dechunk-map]]
             [tech.v3.tensor :as dtt]
+            [tech.v3.io :as io]
             [avclj.avcodec :as avcodec]
             [avclj.swscale :as swscale]
             [avclj.avformat :as avformat]
@@ -141,11 +142,18 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
         (avcodec/free-frame frame)))))
 
 
-(deftype Encoder [^Map ctx ^Map packet ^OutputStream ostream
+(defn- rescale
+  ^long [^long value src-timebase dst-timebase]
+  (let [mult (* (long (:num src-timebase)) (long (:den dst-timebase)))
+        div (* (long (:den src-timebase)) (long (:num dst-timebase)))]
+    (avutil/av_rescale value mult div)))
+
+
+(deftype Encoder [^Map ctx ^Map packet
                   ^long input-pixfmt ^Map input-frame
                   ^long encoder-pixfmt ^Map encoder-frame
                   ^:unsynchronized-mutable n-frames
-                  ^Map sws-ctx ]
+                  ^Map sws-ctx ^Map avfmt-ctx ^Map stream]
   PVideoEncoder
   (encode-frame! [this frame-data]
     (if frame-data
@@ -187,27 +195,30 @@ Input data shapes: %s"
       (when-not (or (== pkt-retval av-error/AVERROR_EAGAIN)
                     (== pkt-retval av-error/AVERROR_EOF))
         (avcodec/check-error pkt-retval)
-        (.write ostream (-> (native-buffer/wrap-address
-                             (.get packet :data)
-                             (.get packet :size)
-                             packet)
-                            (dtype/->byte-array)))
+        ;;The packet is in the time-base we specified originally for the context but
+        ;;the stream's time-base was set during write-header and must be
+        ;;respected so we have to convert to the stream's time-base
+        (.put packet :pts (rescale (:pts packet) (:time-base ctx) (:time-base stream)))
+        (.put packet :dts (rescale (:dts packet) (:time-base ctx) (:time-base stream)))
+        (avformat/av_write_frame avfmt-ctx packet)
         (avcodec/av_packet_unref packet)
         (recur (long (avcodec/avcodec_receive_packet ctx packet))))))
   java.lang.AutoCloseable
   (close [this]
     (encode-frame! this nil)
-    (.close ^OutputStream ostream)
+    (avformat/av_write_trailer avfmt-ctx)
     (avcodec/free-context ctx)
     (avcodec/free-packet packet)
     (avcodec/free-frame input-frame)
     (when-not (== input-pixfmt encoder-pixfmt)
       (avcodec/free-frame encoder-frame)
-      (swscale/sws_freeContext sws-ctx))))
+      (swscale/sws_freeContext sws-ctx))
+    (avformat/avio_closep (dt-ffi/struct-member-ptr avfmt-ctx :pb))
+    (avformat/avformat_free_context avfmt-ctx)))
 
 
 (defn- file-format-from-fname
-  [fname]
+  [^String fname]
   (let [idx (.lastIndexOf (str fname) ".")]
     (.substring fname (inc idx))))
 
@@ -217,7 +228,8 @@ Input data shapes: %s"
 
   * `height` - divisible by 2
   * `width` - divisible by 2
-  * `ostream`  - convertible via tech.v3.io/output-stream! to an output stream.
+  * `out-fname` - Output filepath.  Must be a c-addressable file path, not a url or
+     an input stream.  The file format will be divined from the file extension.
 
   Selected Options:
 
@@ -227,15 +239,18 @@ Input data shapes: %s"
      invalid argument.  To see the valid encoder pixel formats, use find-encoder
      and analyze the `:pix-fmts` member.
   * `:encoder-name` - Name (or integer codec id) of the encoder to use.
-  * `:fps-numerator` - :int32 defaults to 25.
-  * `:fps-denominator` - :int32 defaults to 1."
+  * `:fps-numerator` - :int32 defaults to 60.
+  * `:fps-denominator` - :int32 defaults to 1.
+  * `:codec-options` - Map of string option name to string option key.  Use this
+    to specify FFmpeg profiles and presets."
   (^java.lang.AutoCloseable
    [height width out-fname
     {:keys [gop-size
             fps-numerator fps-denominator
             input-pixfmt encoder-pixfmt
             encoder-name
-            file-format]
+            file-format
+            codec-options]
      :or {gop-size 10
           ;;60 frames/sec
           fps-numerator 60
@@ -250,8 +265,15 @@ Input data shapes: %s"
    (let [input-pixfmt-num (av-pixfmt/pixfmt->value input-pixfmt)
          encoder-pixfmt-num (av-pixfmt/pixfmt->value encoder-pixfmt)
          file-format (or file-format (file-format-from-fname out-fname))
+         codec (if (string? encoder-name)
+                 (avcodec/find-encoder-by-name encoder-name)
+                 (avcodec/find-encoder (long encoder-name)))
+         _ (errors/when-not-errorf codec "Failed to find encoder: %s" encoder-name)
+         codec-ptr (:codec codec)
          avfmt-ctx (avformat/alloc-output-context file-format)
-         ctx (avcodec/alloc-context)
+         _ (avformat/avio_open2 (dt-ffi/struct-member-ptr avfmt-ctx :pb)
+                                out-fname avformat/AVIO_FLAG_WRITE nil nil)
+         ctx (avcodec/alloc-context codec-ptr)
          pkt (avcodec/alloc-packet)
          input-frame (avcodec/alloc-frame)
          encoder-frame (when-not (== input-pixfmt-num encoder-pixfmt-num)
@@ -260,10 +282,7 @@ Input data shapes: %s"
                    (swscale/sws_getContext width height input-pixfmt-num
                                            width height encoder-pixfmt-num
                                            swscale/SWS_BILINEAR nil nil nil))
-         codec (if (string? encoder-name)
-                 (avcodec/find-encoder-by-name encoder-name)
-                 (avcodec/find-encoder (long encoder-name)))
-         _ (errors/when-not-errorf codec "Failed to find encoder: %s" encoder-name)
+         stream (avformat/new-stream avfmt-ctx codec-ptr)
          framerate (dt-struct/new-struct :av-rational)
          time-base (dt-struct/new-struct :av-rational)]
      (.put framerate :num fps-numerator)
@@ -284,20 +303,29 @@ Input data shapes: %s"
        (.put encoder-frame :width width)
        (.put encoder-frame :height height))
      (try
-       (avcodec/avcodec_open2 ctx (:codec codec) nil)
+       (let [opt-dict (when (seq codec-options)
+                        (let [dict (avutil/alloc-dict)]
+                          (doseq [[k v] codec-options]
+                            (println "setting option" k v)
+                            (avutil/set-key-value! dict k v 0))))]
+         (avcodec/avcodec_open2 ctx codec-ptr opt-dict))
+       (avcodec/avcodec_parameters_from_context
+        (Pointer. (:codecpar stream)) ctx)
+       ;;!!This sets the time-base of the stream!!
+       (avformat/avformat_write_header avfmt-ctx nil)
        ;;allocate framebuffer
        ;;We do not care about alignment
        (avcodec/av_frame_get_buffer input-frame 0)
        (when encoder-frame (avcodec/av_frame_get_buffer encoder-frame 0))
-       (Encoder. ctx pkt output
+       (Encoder. ctx pkt
                  input-pixfmt-num input-frame
                  encoder-pixfmt-num encoder-frame
-                 0 sws-ctx)
+                 0 sws-ctx avfmt-ctx stream)
        (catch Throwable e
-         (.close output)
          (avcodec/free-context ctx)
          (avcodec/free-packet pkt)
          (avcodec/free-frame input-frame)
+         (avformat/avformat_free_context avfmt-ctx)
          (when encoder-frame (avcodec/free-frame encoder-frame))
          (when sws-ctx (swscale/sws_freeContext sws-ctx))
          (throw e)))))

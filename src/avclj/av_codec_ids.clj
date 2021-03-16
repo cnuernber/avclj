@@ -1,4 +1,5 @@
-(ns avclj.av-codec-ids)
+(ns avclj.av-codec-ids
+  "Constants defined in this namespace are value integer codec ids.")
 
 
 (def codec-ids
