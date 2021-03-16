@@ -2,13 +2,14 @@
   "libavcodec (FFMPEG) bindings for Clojure.
 
 ```clojure
-
 user> (require '[avclj :as avclj])
+nil
+user> (require '[avclj.av-codec-ids :as codec-ids])
+nil
+user> (require '[tech.v3.tensor :as dtt])
 nil
 user> (avclj/initialize!)
 :ok
-user> (require '[tech.v3.tensor :as dtt])
-nil
 user> (defn img-tensor
   [shape ^long offset]
   (dtt/compute-tensor shape
@@ -23,9 +24,8 @@ user> (defn img-tensor
                             0)))
                       :uint8))
 #'user/img-tensor
-nil
-user> (let [encoder-name \"mp4\"
-            output-fname \"file://test/data/test-video.mp4\"]
+user> (let [encoder-name codec-ids/AV_CODEC_ID_H264
+            output-fname \"test/data/test-video.mp4\"]
         (with-open [encoder (avclj/make-video-encoder 256 256 output-fname
                                                       {:encoder-name encoder-name})]
           (dotimes [iter 125]
@@ -38,7 +38,6 @@ nil
             [tech.v3.datatype.native-buffer :as native-buffer]
             [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype.dechunk-map :refer [dechunk-map]]
-            [tech.v3.tensor :as dtt]
             [tech.v3.io :as io]
             [avclj.avcodec :as avcodec]
             [avclj.swscale :as swscale]
@@ -58,8 +57,10 @@ nil
 
 (defprotocol PVideoEncoder
   (encode-frame! [enc frame]
-    "Handle a frame of data.  Data frames are either single tensors for interleaved
-formats or sequences of tensors for planar formats - see make-video-encoder."))
+    "Handle a frame of data.  A frame is a persistent vector of buffers, one for
+each data plane.  If you are passing in a nio buffer, ensure to require
+'tech.v3.datatype.nio-buffer` for zero-copy support.  If frame is not a persistent
+vector it is assumed to a single buffer and is wrapped in a persistent vector"))
 
 
 (defn initialize!
@@ -107,8 +108,8 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
        (sort)))
 
 
-(defn raw-frame->tensors
-  "Zero-copy conversion ofa frame to a vector of tensors, one for each of the
+(defn raw-frame->buffers
+  "Zero-copy conversion ofa frame to a vector of buffers, one for each of the
   frame's data planes."
   [^Map frame]
   (let [fheight (long (.get frame :height))]
@@ -119,15 +120,15 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
          (mapv (fn [[idx linesize]]
                  (let [linesize (long linesize)]
                   (when-not (== 0 linesize)
-                    (let [data-ptr (long (.get frame [:data idx]))
-                          nbuf (-> (native-buffer/wrap-address data-ptr
-                                                               (* fheight linesize)
-                                                               frame)
-                                   (native-buffer/set-native-datatype :uint8))]
-                      (dtt/reshape nbuf [fheight linesize])))))))))
+                    (let [data-ptr (long (.get frame [:data idx]))]
+                      (-> (native-buffer/wrap-address data-ptr
+                                                      (* fheight linesize)
+                                                      frame)
+                          (native-buffer/set-native-datatype :uint8))))))))))
 
-(defn frame-tensor-shape
-  "Return a vector of tensor shapes.  Corresponds to the require input format of
+
+(defn frame-buffer-shape
+  "Return a vector of buffer shapes.  Corresponds to the require input format of
   encode-frame!."
   [height width pixel-fmt]
   (let [frame (avcodec/alloc-frame)]
@@ -137,7 +138,7 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
       (.put frame :format (av-pixfmt/pixfmt->value pixel-fmt))
       (avcodec/av_frame_get_buffer frame 0)
       (avcodec/av_frame_make_writable frame)
-      (mapv dtype/shape (raw-frame->tensors frame))
+      (mapv dtype/shape (raw-frame->buffers frame))
       (finally
         (avcodec/free-frame frame)))))
 
@@ -158,10 +159,10 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
   (encode-frame! [this frame-data]
     (if frame-data
       (let [_ (avcodec/av_frame_make_writable input-frame)
-            ftens (raw-frame->tensors input-frame)
-            frame-data (if (dtt/tensor? frame-data)
-                         [frame-data]
-                         frame-data)]
+            ftens (raw-frame->buffers input-frame)
+            frame-data (if (vector? frame-data)
+                         frame-data
+                         [frame-data])]
         (errors/when-not-errorf
          (== (count ftens) (count frame-data))
          "Count of frame data tensors (%d) differs from count of encode data tensors (%d)
