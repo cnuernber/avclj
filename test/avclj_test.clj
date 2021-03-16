@@ -32,7 +32,7 @@
 
 
 (deftest encode-demo
-  (let [encoder-name "mp4"
+  (let [encoder-name "mpeg4"
         output-fname "file://test/data/test-video.mp4"]
     (.delete (java.io.File. "test/data/test-video.mp4"))
     (with-open [encoder (avclj/make-video-encoder 256 256 output-fname

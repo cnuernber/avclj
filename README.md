@@ -17,7 +17,12 @@ libavcodec58 - FFmpeg library with de/encoders for audio/video codecs - runtime 
 * [example encoder](test/avclj_test.clj)
 * [API documentation](https://cnuernber.github.io/avclj/)
 
+## Development
+
+* `clj -X:codox` - regenerate documentation
+* `clj -M:test` - run the unit tests
+
 ## License - GPLv2
- 
-FFmpeg provides a function to get the license of the library; it returns GPLv2 on my system.
-This library is thus transitively licensed under GPLv2.
+
+FFmpeg provides a function to get the license of the library; it returns GPLv2 on my
+system. This library is thus transitively licensed under GPLv2.

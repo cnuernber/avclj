@@ -146,11 +146,12 @@
 
 
 (defn- read-codec-pixfmts
-  [addr]
-  (let [nbuf (-> (native-buffer/wrap-address addr 4096 nil)
-                 (native-buffer/set-native-datatype :int32))]
-    (->> (take-while #(not= -1 %) nbuf)
-         (mapv av-pixfmt/value->pixfmt))))
+  [^long addr]
+  (when-not (== addr 0)
+    (let [nbuf (-> (native-buffer/wrap-address addr 4096 nil)
+                   (native-buffer/set-native-datatype :int32))]
+      (->> (take-while #(not= -1 %) nbuf)
+           (mapv av-pixfmt/value->pixfmt)))))
 
 
 (defn expand-codec

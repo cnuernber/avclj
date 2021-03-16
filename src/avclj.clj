@@ -121,6 +121,21 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
                                    (native-buffer/set-native-datatype :uint8))]
                       (dtt/reshape nbuf [fheight linesize])))))))))
 
+(defn frame-tensor-shape
+  "Return a vector of tensor shapes.  Corresponds to the require input format of
+  encode-frame!."
+  [height width pixel-fmt]
+  (let [frame (avcodec/alloc-frame)]
+    (try
+      (.put frame :width width)
+      (.put frame :height height)
+      (.put frame :format (av-pixfmt/pixfmt->value pixel-fmt))
+      (avcodec/av_frame_get_buffer frame 0)
+      (avcodec/av_frame_make_writable frame)
+      (mapv dtype/shape (raw-frame->tensors frame))
+      (finally
+        (avcodec/free-frame frame)))))
+
 
 (deftype Encoder [^Map ctx ^Map packet ^OutputStream ostream
                   ^long input-pixfmt ^Map input-frame
@@ -163,8 +178,7 @@ Input data shapes: %s"
                                (dt-ffi/struct-member-ptr encoder-frame :linesize))
             (.put encoder-frame :pts (dec n-frames))
             (avcodec/avcodec_send_frame ctx encoder-frame))))
-      (do
-        (avcodec/avcodec_send_frame ctx nil)))
+      (avcodec/avcodec_send_frame ctx nil))
     (loop [pkt-retval (long (avcodec/avcodec_receive_packet ctx packet))]
       (when-not (or (== pkt-retval av-error/AVERROR_EAGAIN)
                     (== pkt-retval av-error/AVERROR_EOF))
@@ -200,7 +214,9 @@ Input data shapes: %s"
   * `:input-pixfmt` - One of the pixel formats.  Defaults to \"AV_PIX_FMT_BGR24\"
   * `:encoder-pixfmt` - One of the pixel formats.  Defaults to \"AV_PIX_FMT_YUV420P\".
      Changing this will probably cause opending the codec to fail with an
-     invalid argument.
+     invalid argument.  To see the valid encoder pixel formats, use find-encoder
+     and analyze the `:pix-fmts` member.
+  * `:encoder-name` - Name (or integer codec id) of the encoder to use.
   * `:fps-numerator` - :int32 defaults to 25.
   * `:fps-denominator` - :int32 defaults to 1."
   (^java.lang.AutoCloseable
@@ -208,7 +224,7 @@ Input data shapes: %s"
     {:keys [bit-rate gop-size max-b-frames
             fps-numerator fps-denominator
             input-pixfmt encoder-pixfmt
-            encoder-name-or-id]
+            encoder-name]
      :or {bit-rate 400000
           gop-size 10
           max-b-frames 1
@@ -220,7 +236,7 @@ Input data shapes: %s"
           ;;Lots of encoders *only* support this
           ;;input pixel format
           encoder-pixfmt "AV_PIX_FMT_YUV420P"
-          encoder-name-or-id "mpeg4"}}]
+          encoder-name "mpeg4"}}]
    (let [input-pixfmt-num (av-pixfmt/pixfmt->value input-pixfmt)
          encoder-pixfmt-num (av-pixfmt/pixfmt->value encoder-pixfmt)
          output (io/output-stream! ostream)
@@ -233,9 +249,10 @@ Input data shapes: %s"
                    (swscale/sws_getContext width height input-pixfmt-num
                                            width height encoder-pixfmt-num
                                            swscale/SWS_BILINEAR nil nil nil))
-         codec (if (string? encoder-name-or-id)
-                 (avcodec/find-encoder-by-name encoder-name-or-id)
-                 (avcodec/find-encoder (long encoder-name-or-id)))
+         codec (if (string? encoder-name)
+                 (avcodec/find-encoder-by-name encoder-name)
+                 (avcodec/find-encoder (long encoder-name)))
+         _ (errors/when-not-errorf codec "Failed to find encoder: %s" encoder-name)
          framerate (dt-struct/new-struct :av-rational)
          time-base (dt-struct/new-struct :av-rational)]
      (.put framerate :num fps-numerator)
