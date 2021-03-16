@@ -38,7 +38,8 @@
     (.delete (java.io.File. output-fname))
     (with-open [encoder (avclj/make-video-encoder
                          256 256 output-fname
-                         {:encoder-name encoder-name})]
+                         {:encoder-name encoder-name
+                          :bit-rate 600000})]
       (dotimes [iter 120]
         (avclj/encode-frame! encoder (img-tensor [256 256 3] iter))))
     (is (.exists (java.io.File. output-fname)))))

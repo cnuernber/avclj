@@ -257,6 +257,7 @@ Input data shapes: %s"
             input-pixfmt encoder-pixfmt
             encoder-name
             file-format
+            bit-rate
             codec-options]
      :or {gop-size 10
           ;;60 frames/sec
@@ -267,7 +268,8 @@ Input data shapes: %s"
           ;;Lots of encoders *only* support this
           ;;input pixel format
           encoder-pixfmt "AV_PIX_FMT_YUV420P"
-          encoder-name "mpeg4"}}]
+          encoder-name "mpeg4"
+          bit-rate 600000}}]
    (clj-io/make-parents out-fname)
    (let [input-pixfmt-num (av-pixfmt/pixfmt->value input-pixfmt)
          encoder-pixfmt-num (av-pixfmt/pixfmt->value encoder-pixfmt)
@@ -300,6 +302,7 @@ Input data shapes: %s"
      (.put ctx :height height)
      (.put ctx :framerate framerate)
      (.put ctx :time-base time-base)
+     (.put ctx :bit-rate bit-rate)
      (.put ctx :gop-size gop-size)
      (.put ctx :pix-fmt encoder-pixfmt-num)
      (.put input-frame :format input-pixfmt-num)
