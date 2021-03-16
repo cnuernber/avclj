@@ -31,7 +31,13 @@ user> (let [encoder-name codec-ids/AV_CODEC_ID_H264
           (dotimes [iter 125]
             (avclj/encode-frame! encoder (img-tensor [256 256 3] iter)))))
 nil
-```"
+```
+
+
+  * To use this with buffered images, make sure the pixel formats match and be sure
+    to require `tech.v3.libs.buffered-image`.
+  * If you have a system that is producing java.nio.ByteBuffers then require
+    `tech.v3.datatype.nio-buffer`."
   (:require [tech.v3.datatype :as dtype]
             [tech.v3.datatype.struct :as dt-struct]
             [tech.v3.datatype.errors :as errors]
