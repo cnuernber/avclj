@@ -39,12 +39,14 @@ nil
             [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype.dechunk-map :refer [dechunk-map]]
             [tech.v3.tensor :as dtt]
-            [tech.v3.io :as io]
             [avclj.avcodec :as avcodec]
             [avclj.swscale :as swscale]
+            [avclj.avformat :as avformat]
+            [avclj.avutil :as avutil]
             [avclj.av-pixfmt :as av-pixfmt]
             [avclj.av-error :as av-error]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [clojure.java.io :as clj-io])
   (:import [java.io OutputStream]
            [java.util Map]
            [tech.v3.datatype.ffi Pointer]))
@@ -68,6 +70,8 @@ formats or sequences of tensors for planar formats - see make-video-encoder."))
     (log/debug "h264 encoding disabled"))
   (avcodec/initialize!)
   (swscale/initialize!)
+  (avformat/initialize!)
+  (avutil/initialize!)
   :ok)
 
 
@@ -202,6 +206,12 @@ Input data shapes: %s"
       (swscale/sws_freeContext sws-ctx))))
 
 
+(defn- file-format-from-fname
+  [fname]
+  (let [idx (.lastIndexOf (str fname) ".")]
+    (.substring fname (inc idx))))
+
+
 (defn make-video-encoder
   "Make a video encoder.
 
@@ -220,16 +230,15 @@ Input data shapes: %s"
   * `:fps-numerator` - :int32 defaults to 25.
   * `:fps-denominator` - :int32 defaults to 1."
   (^java.lang.AutoCloseable
-   [height width ostream
-    {:keys [bit-rate gop-size max-b-frames
+   [height width out-fname
+    {:keys [gop-size
             fps-numerator fps-denominator
             input-pixfmt encoder-pixfmt
-            encoder-name]
-     :or {bit-rate 400000
-          gop-size 10
-          max-b-frames 1
-          ;;25 frames/sec
-          fps-numerator 25
+            encoder-name
+            file-format]
+     :or {gop-size 10
+          ;;60 frames/sec
+          fps-numerator 60
           fps-denominator 1
           ;;BGR24 because :byte-bgr is a bufferedimage supported format.
           input-pixfmt "AV_PIX_FMT_BGR24"
@@ -237,9 +246,11 @@ Input data shapes: %s"
           ;;input pixel format
           encoder-pixfmt "AV_PIX_FMT_YUV420P"
           encoder-name "mpeg4"}}]
+   (clj-io/make-parents out-fname)
    (let [input-pixfmt-num (av-pixfmt/pixfmt->value input-pixfmt)
          encoder-pixfmt-num (av-pixfmt/pixfmt->value encoder-pixfmt)
-         output (io/output-stream! ostream)
+         file-format (or file-format (file-format-from-fname out-fname))
+         avfmt-ctx (avformat/alloc-output-context file-format)
          ctx (avcodec/alloc-context)
          pkt (avcodec/alloc-packet)
          input-frame (avcodec/alloc-frame)
@@ -259,13 +270,11 @@ Input data shapes: %s"
      (.put framerate :den fps-denominator)
      (.put time-base :den fps-numerator)
      (.put time-base :num fps-denominator)
-     (.put ctx :bit-rate bit-rate)
      (.put ctx :width width)
      (.put ctx :height height)
      (.put ctx :framerate framerate)
      (.put ctx :time-base time-base)
      (.put ctx :gop-size gop-size)
-     (.put ctx :max-b-frames max-b-frames)
      (.put ctx :pix-fmt encoder-pixfmt-num)
      (.put input-frame :format input-pixfmt-num)
      (.put input-frame :width width)

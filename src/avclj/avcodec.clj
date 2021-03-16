@@ -53,6 +53,10 @@
    :avcodec_free_context {:rettype :void
                           :argtypes [['codec-ptr-ptr :pointer]]
                           :doc "Free the context.  Expects a ptr-ptr to be passed in"}
+   :avcodec_parameters_from_context {:rettype :int32
+                                     :argtypes [['par :pointer]
+                                                ['codec :pointer]]
+                                     :doc "Initialize parameter struct from the codec"}
    :avcodec_open2 {:rettype :int32
                    :argtypes [['c :pointer]
                               ['codec :pointer]

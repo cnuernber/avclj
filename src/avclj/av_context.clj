@@ -1,4 +1,5 @@
 (ns avclj.av-context
+  "Definition of all the struct types used in the av* system"
   (:require [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype.ffi.size-t :as ffi-size-t]
             [tech.v3.datatype.ffi.clang :as ffi-clang]
@@ -319,8 +320,196 @@
        240 |   const struct AVCodecHWConfigInternal ** hw_configs")
 
 
-(dt-struct/define-datatype! :av-rational [{:name :num :datatype :int32}
-                                          {:name :den :datatype :int32}])
+(def avformat-context-layout
+  "         0 |   const AVClass * av_class
+         8 |   struct AVInputFormat * iformat
+        16 |   struct AVOutputFormat * oformat
+        24 |   void * priv_data
+        32 |   AVIOContext * pb
+        40 |   int ctx_flags
+        44 |   unsigned int nb_streams
+        48 |   AVStream ** streams
+        56 |   char [1024] filename
+      1080 |   char * url
+      1088 |   int64_t start_time
+      1096 |   int64_t duration
+      1104 |   int64_t bit_rate
+      1112 |   unsigned int packet_size
+      1116 |   int max_delay
+      1120 |   int flags
+      1128 |   int64_t probesize
+      1136 |   int64_t max_analyze_duration
+      1144 |   const uint8_t * key
+      1152 |   int keylen
+      1156 |   unsigned int nb_programs
+      1160 |   AVProgram ** programs
+      1168 |   enum AVCodecID video_codec_id
+      1172 |   enum AVCodecID audio_codec_id
+      1176 |   enum AVCodecID subtitle_codec_id
+      1180 |   unsigned int max_index_size
+      1184 |   unsigned int max_picture_buffer
+      1188 |   unsigned int nb_chapters
+      1192 |   AVChapter ** chapters
+      1200 |   AVDictionary * metadata
+      1208 |   int64_t start_time_realtime
+      1216 |   int fps_probe_size
+      1220 |   int error_recognition
+      1224 |   struct AVIOInterruptCB interrupt_callback
+      1224 |     int (*)(void *) callback
+      1232 |     void * opaque
+      1240 |   int debug
+      1248 |   int64_t max_interleave_delta
+      1256 |   int strict_std_compliance
+      1260 |   int event_flags
+      1264 |   int max_ts_probe
+      1268 |   int avoid_negative_ts
+      1272 |   int ts_id
+      1276 |   int audio_preload
+      1280 |   int max_chunk_duration
+      1284 |   int max_chunk_size
+      1288 |   int use_wallclock_as_timestamps
+      1292 |   int avio_flags
+      1296 |   enum AVDurationEstimationMethod duration_estimation_method
+      1304 |   int64_t skip_initial_bytes
+      1312 |   unsigned int correct_ts_overflow
+      1316 |   int seek2any
+      1320 |   int flush_packets
+      1324 |   int probe_score
+      1328 |   int format_probesize
+      1336 |   char * codec_whitelist
+      1344 |   char * format_whitelist
+      1352 |   AVFormatInternal * internal
+      1360 |   int io_repositioned
+      1368 |   AVCodec * video_codec
+      1376 |   AVCodec * audio_codec
+      1384 |   AVCodec * subtitle_codec
+      1392 |   AVCodec * data_codec
+      1400 |   int metadata_header_padding
+      1408 |   void * opaque
+      1416 |   av_format_control_message control_message_cb
+      1424 |   int64_t output_ts_offset
+      1432 |   uint8_t * dump_separator
+      1440 |   enum AVCodecID data_codec_id
+      1448 |   int (*)(struct AVFormatContext *, AVIOContext **, const char *, int, const AVIOInterruptCB *, AVDictionary **) open_cb
+      1456 |   char * protocol_whitelist
+      1464 |   int (*)(struct AVFormatContext *, AVIOContext **, const char *, int, AVDictionary **) io_open
+      1472 |   void (*)(struct AVFormatContext *, AVIOContext *) io_close
+      1480 |   char * protocol_blacklist
+      1488 |   int max_streams
+      1492 |   int skip_estimate_duration_from_pts")
+
+
+(def av-stream-layout
+  "         0 |   int index
+         4 |   int id
+         8 |   AVCodecContext * codec
+        16 |   void * priv_data
+        24 |   struct AVRational time_base
+        24 |     int num
+        28 |     int den
+        32 |   int64_t start_time
+        40 |   int64_t duration
+        48 |   int64_t nb_frames
+        56 |   int disposition
+        60 |   enum AVDiscard discard
+        64 |   struct AVRational sample_aspect_ratio
+        64 |     int num
+        68 |     int den
+        72 |   AVDictionary * metadata
+        80 |   struct AVRational avg_frame_rate
+        80 |     int num
+        84 |     int den
+        88 |   struct AVPacket attached_pic
+        88 |     AVBufferRef * buf
+        96 |     int64_t pts
+       104 |     int64_t dts
+       112 |     uint8_t * data
+       120 |     int size
+       124 |     int stream_index
+       128 |     int flags
+       136 |     AVPacketSideData * side_data
+       144 |     int side_data_elems
+       152 |     int64_t duration
+       160 |     int64_t pos
+       168 |     int64_t convergence_duration
+       176 |   AVPacketSideData * side_data
+       184 |   int nb_side_data
+       188 |   int event_flags
+       192 |   struct AVRational r_frame_rate
+       192 |     int num
+       196 |     int den
+       200 |   char * recommended_encoder_configuration
+       208 |   AVCodecParameters * codecpar
+       216 |   struct (anonymous struct at /usr/include/x86_64-linux-gnu/libavformat/avformat.h:1035:5) * info
+       224 |   int pts_wrap_bits
+       232 |   int64_t first_dts
+       240 |   int64_t cur_dts
+       248 |   int64_t last_IP_pts
+       256 |   int last_IP_duration
+       260 |   int probe_packets
+       264 |   int codec_info_nb_frames
+       268 |   enum AVStreamParseType need_parsing
+       272 |   struct AVCodecParserContext * parser
+       280 |   struct AVPacketList * last_in_packet_buffer
+       288 |   struct AVProbeData probe_data
+       288 |     const char * filename
+       296 |     unsigned char * buf
+       304 |     int buf_size
+       312 |     const char * mime_type
+       320 |   int64_t [17] pts_buffer
+       456 |   AVIndexEntry * index_entries
+       464 |   int nb_index_entries
+       468 |   unsigned int index_entries_allocated_size
+       472 |   int stream_identifier
+       476 |   int program_num
+       480 |   int pmt_version
+       484 |   int pmt_stream_idx
+       488 |   int64_t interleaver_chunk_size
+       496 |   int64_t interleaver_chunk_duration
+       504 |   int request_probe
+       508 |   int skip_to_keyframe
+       512 |   int skip_samples
+       520 |   int64_t start_skip_samples
+       528 |   int64_t first_discard_sample
+       536 |   int64_t last_discard_sample
+       544 |   int nb_decoded_frames
+       552 |   int64_t mux_ts_offset
+       560 |   int64_t pts_wrap_reference
+       568 |   int pts_wrap_behavior
+       572 |   int update_initial_durations_done
+       576 |   int64_t [17] pts_reorder_error
+       712 |   uint8_t [17] pts_reorder_error_count
+       736 |   int64_t last_dts_for_order_check
+       744 |   uint8_t dts_ordered
+       745 |   uint8_t dts_misordered
+       748 |   int inject_global_side_data
+       752 |   struct AVRational display_aspect_ratio
+       752 |     int num
+       756 |     int den
+       760 |   AVStreamInternal * internal")
+
+;;Things with pointers are delayed so that if we are AOT'd and then launched
+;;on a 32 bit system the struct sizes are generated upon first call, not upon
+;;initial compilation
+
+
+(def av-rational-def
+  (dt-struct/define-datatype! :av-rational [{:name :num :datatype :int32}
+                                            {:name :den :datatype :int32}]))
+
+(def avio-interrupt-cb-def*
+  (delay (dt-struct/define-datatype! :avio-interrupt-cb
+           [{:name :num :datatype (ffi-size-t/ptr-t-type)}
+            {:name :den :datatype (ffi-size-t/ptr-t-type)}])))
+
+
+(def av-probe-def*
+  (delay (dt-struct/define-datatype! :av-probe-data
+           [{:name :filename :datatype (ffi-size-t/ptr-t-type)}
+            {:name :buf :datatype (ffi-size-t/ptr-t-type)}
+            {:name :buf-size :datatype :int32}
+            {:name :mime-type :datatype (ffi-size-t/ptr-t-type)}])))
+
 
 
 (def context-def* (delay (ffi-clang/defstruct-from-layout
@@ -334,3 +523,21 @@
 
 (def codec-def* (delay (ffi-clang/defstruct-from-layout
                          :av-codec codec-layout)))
+
+(def av-format-context-def* (delay
+                              @avio-interrupt-cb-def*
+                              (ffi-clang/defstruct-from-layout
+                                (csk/->kebab-case-keyword "AVFormatContext")
+                                avformat-context-layout
+                                {:failed-line-parser
+                                 (fn [line-data]
+                                   (let [line-split (s/split line-data #"\s+")]
+                                     (case (str (first line-split))
+                                       "av_format_control_message" :int64))
+                                   )})))
+
+(def av-stream-def* (delay
+                      ;;av-stream relies on av-packet
+                      @packet-def*
+                      (ffi-clang/defstruct-from-layout
+                        :av-stream av-stream-layout)))
