@@ -332,6 +332,7 @@ Input data shapes: %s"
        (.put encoder-frame :height height))
      (try
        (let [opt-dict (when (seq codec-options)
+                        (log/infof "Codec Options: %s" (pr-str codec-options))
                         (let [dict (avutil/alloc-dict)]
                           (doseq [[k v] codec-options]
                             (avutil/set-key-value! dict k v 0))))]
