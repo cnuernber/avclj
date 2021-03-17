@@ -156,6 +156,9 @@ vector it is assumed to a single buffer and is wrapped in a persistent vector"))
     (avutil/av_rescale value mult div)))
 
 
+(def ^{:tag 'long} AV_NOPTS_VALUE (unchecked-long 0x8000000000000000))
+
+
 (deftype Encoder [^Map ctx ^Map packet
                   ^long input-pixfmt ^Map input-frame
                   ^long encoder-pixfmt ^Map encoder-frame
@@ -205,14 +208,28 @@ Input data shapes: %s"
         ;;The packet is in the time-base we specified originally for the context but
         ;;the stream's time-base was set during write-header and must be
         ;;respected so we have to convert to the stream's time-base
-        (.put packet :pts (rescale (:pts packet) (:time-base ctx) (:time-base stream)))
-        (.put packet :dts (rescale (:dts packet) (:time-base ctx) (:time-base stream)))
-        (avformat/av_write_frame avfmt-ctx packet)
+        (.put packet :duration 1)
+        (when-not (== (long (:pts packet)) AV_NOPTS_VALUE)
+          (.put packet :pts (rescale (:pts packet)
+                                     (:time-base ctx)
+                                     (:time-base stream))))
+        (when-not (== (long (:pts packet)) AV_NOPTS_VALUE)
+          (.put packet :dts (rescale (:dts packet)
+                                     (:time-base ctx)
+                                     (:time-base stream))))
+        (when-not (== (long (:duration packet)) 0)
+          (.put packet :duration (rescale (:duration packet)
+                                          (:time-base ctx)
+                                          (:time-base stream))))
+        (when-not (== (long (:convergence-duration packet)) 0)
+          (.put packet :convergence-duration (rescale (:convergence-duration packet)
+                                                      (:time-base ctx)
+                                                      (:time-base stream))))
+        (avformat/av_interleaved_write_frame avfmt-ctx packet)
         (avcodec/av_packet_unref packet)
         (recur (long (avcodec/avcodec_receive_packet ctx packet))))))
   java.lang.AutoCloseable
   (close [this]
-    (println (into {} (:avg-frame-rate stream)))
     (encode-frame! this nil)
     (avformat/av_write_trailer avfmt-ctx)
     (avcodec/free-context ctx)
@@ -327,7 +344,6 @@ Input data shapes: %s"
        (avformat/avformat_write_header avfmt-ctx nil)
        ;;allocate framebuffer
        ;;We do not care about alignment
-       _ (println (into {} (:avg-frame-rate stream)))
        (avcodec/av_frame_get_buffer input-frame 0)
        (when encoder-frame (avcodec/av_frame_get_buffer encoder-frame 0))
        (Encoder. ctx pkt

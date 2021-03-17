@@ -68,6 +68,13 @@
    :av_packet_free {:rettype :void
                     :argtypes [['packet :pointer]]
                     :doc "free an av packet"}
+   :av_packet_rescale_ts {:rettype :void
+                          :argtypes [['pkt :pointer]
+                                     ['src_num :int32]
+                                     ['src_den :int32]
+                                     ['dst_num :int32]
+                                     ['dst_den :int32]]
+                          :doc "rescale a packet's time fields"}
    :av_frame_alloc {:rettype :pointer
                     :doc "allocate an av frame"}
    :av_frame_free {:rettype :void
