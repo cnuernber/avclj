@@ -22,6 +22,11 @@ libavcodec58 - FFmpeg library with de/encoders for audio/video codecs - runtime 
 * `clj -X:codox` - regenerate documentation
 * `clj -M:test` - run the unit tests
 
+
+## Extra Information
+ 
+* [Understanding Rate Control](https://slhck.info/video/2017/03/01/rate-control.html)
+
 ## License - GPLv2
 
 FFmpeg provides a function to get the license of the library; it returns GPLv2 on my
