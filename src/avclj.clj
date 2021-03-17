@@ -270,15 +270,14 @@ Input data shapes: %s"
     to specify FFmpeg profiles and presets."
   (^java.lang.AutoCloseable
    [height width out-fname
-    {:keys [gop-size
-            fps-numerator fps-denominator
+    {:keys [fps-numerator fps-denominator
             input-pixfmt encoder-pixfmt
             encoder-name
             file-format
             bit-rate
-            codec-options]
-     :or {gop-size 10
-          ;;60 frames/sec
+            codec-options
+            codec-private-options]
+     :or {;;60 frames/sec
           fps-numerator 60
           fps-denominator 1
           ;;BGR24 because :byte-bgr is a bufferedimage supported format.
@@ -321,7 +320,6 @@ Input data shapes: %s"
      (.put ctx :framerate framerate)
      (.put ctx :time-base time-base)
      (.put ctx :bit-rate bit-rate)
-     (.put ctx :gop-size gop-size)
      (.put ctx :pix-fmt encoder-pixfmt-num)
      (.put input-frame :format input-pixfmt-num)
      (.put input-frame :width width)
@@ -336,6 +334,10 @@ Input data shapes: %s"
                         (let [dict (avutil/alloc-dict)]
                           (doseq [[k v] codec-options]
                             (avutil/set-key-value! dict k v 0))))]
+         (when (seq codec-private-options)
+           (log/infof "Codec Private Options: %s" codec-private-options)
+           (doseq [[k v] codec-private-options]
+             (avcodec/av_opt_set (:priv-data ctx) k v 0)))
          (avcodec/avcodec_open2 ctx codec-ptr opt-dict))
        (avcodec/avcodec_parameters_from_context
         (Pointer. (:codecpar stream)) ctx)

@@ -63,6 +63,13 @@
                               ['opts :pointer?]]
                    :check-error? true
                    :doc "Open the codec with the context"}
+   :av_opt_set {:rettype :int32
+                :argtypes [['priv-data :pointer]
+                           ['key :string]
+                           ['value :string]
+                           ['flags :int32]]
+                :doc "Set an option on an object such as the codec context"
+                :check-error? true}
    :av_packet_alloc {:rettype :pointer
                      :doc "allocate an av packet"}
    :av_packet_free {:rettype :void
