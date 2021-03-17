@@ -37,7 +37,13 @@ nil
   * To use this with buffered images, make sure the pixel formats match and be sure
     to require `tech.v3.libs.buffered-image`.
   * If you have a system that is producing java.nio.ByteBuffers then require
-    `tech.v3.datatype.nio-buffer`."
+    `tech.v3.datatype.nio-buffer`.
+
+
+  For manipulating h264 encoder properties, use the `:codec-private-options` and
+  the various possibilities from the [ffmpeg libx264 page](https://trac.ffmpeg.org/wiki/Encode/H.264).
+  "
+
   (:require [tech.v3.datatype :as dtype]
             [tech.v3.datatype.struct :as dt-struct]
             [tech.v3.datatype.errors :as errors]
@@ -107,14 +113,34 @@ vector it is assumed to a single buffer and is wrapped in a persistent vector"))
   (avcodec/list-codecs))
 
 
+(defn find-encoder
+  "Find an encoder by name.  Name may either be the ffmpeg encoder name
+  such as \"libx264\" or it may be a codec id in `avclj.av-codec-ids` such as
+  `avclj.av-codec-ids/AV_CODEC_ID_H264`."
+  [encoder-name]
+  (if (string? encoder-name)
+    (avcodec/find-encoder-by-name encoder-name)
+    (avcodec/find-encoder (long encoder-name))))
+
+
+(defn find-decoder
+  "Find an encoder by name.  Name may either be the ffmpeg encoder name
+  such as \"libx264\" or it may be a codec id in `avclj.av-codec-ids` such as
+  `avclj.av-codec-ids/AV_CODEC_ID_H264`."
+  [decoder-name]
+  (if (string? decoder-name)
+    (avcodec/find-decoder-by-name decoder-name)
+    (avcodec/find-decoder (long decoder-name))))
+
+
 (defn list-pix-formats
-  "List all available pixel format names"
+  "List all available pixel format names."
   []
   (->> (keys av-pixfmt/pixfmt-name-value-map)
        (sort)))
 
 
-(defn raw-frame->buffers
+(defn- raw-frame->buffers
   "Zero-copy conversion ofa frame to a vector of buffers, one for each of the
   frame's data planes."
   [^Map frame]
@@ -135,7 +161,8 @@ vector it is assumed to a single buffer and is wrapped in a persistent vector"))
 
 (defn frame-buffer-shape
   "Return a vector of buffer shapes.  Corresponds to the require input format of
-  encode-frame!."
+  encode-frame!.  Note that for planar pixel formats you will have to pass in
+  multiple buffers."
   [height width pixel-fmt]
   (let [frame (avcodec/alloc-frame)]
     (try
@@ -156,7 +183,8 @@ vector it is assumed to a single buffer and is wrapped in a persistent vector"))
     (avutil/av_rescale value mult div)))
 
 
-(def ^{:tag 'long} AV_NOPTS_VALUE (unchecked-long 0x8000000000000000))
+(def ^{:tag 'long
+       :private true} AV_NOPTS_VALUE (unchecked-long 0x8000000000000000))
 
 
 (deftype Encoder [^Map ctx ^Map packet
@@ -291,8 +319,12 @@ Input data shapes: %s"
           encoder-pixfmt "AV_PIX_FMT_YUV420P"
           encoder-name "mpeg4"}}]
    (clj-io/make-parents out-fname)
-   (let [input-pixfmt-num (av-pixfmt/pixfmt->value input-pixfmt)
-         encoder-pixfmt-num (av-pixfmt/pixfmt->value encoder-pixfmt)
+   (let [input-pixfmt-num (if (string? input-pixfmt)
+                            (av-pixfmt/pixfmt->value input-pixfmt)
+                            (long input-pixfmt))
+         encoder-pixfmt-num (if (string? encoder-pixfmt)
+                              (av-pixfmt/pixfmt->value encoder-pixfmt)
+                              (long encoder-pixfmt))
          file-format (or file-format (file-format-from-fname out-fname))
          codec (if (string? encoder-name)
                  (avcodec/find-encoder-by-name encoder-name)

@@ -300,3 +300,16 @@
   (if-let [retval (get pixfmt-value-name-multi-map pixval)]
     retval
     [(format "Unrecognized pixfmt %s" pixval)]))
+
+
+(defmacro define-pixfmt-constants
+  []
+  `(do
+     ~@(->> pixfmt-name-value-map
+            (map (fn [[k v]]
+                   (let [sym (with-meta (symbol k)
+                               {:tag ''long})]
+                     `(def ~sym ~v)))))))
+
+
+(define-pixfmt-constants)
