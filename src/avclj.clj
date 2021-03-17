@@ -266,8 +266,12 @@ Input data shapes: %s"
   * `:encoder-name` - Name (or integer codec id) of the encoder to use.
   * `:fps-numerator` - :int32 defaults to 60.
   * `:fps-denominator` - :int32 defaults to 1.
-  * `:codec-options` - Map of string option name to string option key.  Use this
-    to specify FFmpeg profiles and presets."
+  * `:codec-options` - Map of string option name to string option key.
+  * `:codec-private-options` - Codec-private options you can set.  For libx264 an example
+     is {\"preset\" \"slow\"}.
+  * `:bit-rate` - If specified, the system will set a constant bit-rate for the video.  In
+    this case with h264 encoding it will switch from crf encoding to abr encoding with a
+    40 frame rate control look-ahead."
   (^java.lang.AutoCloseable
    [height width out-fname
     {:keys [fps-numerator fps-denominator
@@ -285,8 +289,7 @@ Input data shapes: %s"
           ;;Lots of encoders *only* support this
           ;;input pixel format
           encoder-pixfmt "AV_PIX_FMT_YUV420P"
-          encoder-name "mpeg4"
-          bit-rate 600000}}]
+          encoder-name "mpeg4"}}]
    (clj-io/make-parents out-fname)
    (let [input-pixfmt-num (av-pixfmt/pixfmt->value input-pixfmt)
          encoder-pixfmt-num (av-pixfmt/pixfmt->value encoder-pixfmt)
@@ -319,7 +322,7 @@ Input data shapes: %s"
      (.put ctx :height height)
      (.put ctx :framerate framerate)
      (.put ctx :time-base time-base)
-     (.put ctx :bit-rate bit-rate)
+     (when bit-rate (.put ctx :bit-rate bit-rate))
      (.put ctx :pix-fmt encoder-pixfmt-num)
      (.put input-frame :format input-pixfmt-num)
      (.put input-frame :width width)
@@ -337,7 +340,7 @@ Input data shapes: %s"
          (when (seq codec-private-options)
            (log/infof "Codec Private Options: %s" codec-private-options)
            (doseq [[k v] codec-private-options]
-             (avcodec/av_opt_set (:priv-data ctx) k v 0)))
+             (avcodec/av_opt_set (Pointer. (:priv-data ctx)) k v 0)))
          (avcodec/avcodec_open2 ctx codec-ptr opt-dict))
        (avcodec/avcodec_parameters_from_context
         (Pointer. (:codecpar stream)) ctx)
