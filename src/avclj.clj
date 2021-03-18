@@ -288,7 +288,7 @@ Input data shapes: %s"
 
   * `:input-pixfmt` - One of the pixel formats.  Defaults to \"AV_PIX_FMT_BGR24\"
   * `:encoder-pixfmt` - One of the pixel formats.  Defaults to \"AV_PIX_FMT_YUV420P\".
-     Changing this will probably cause opending the codec to fail with an
+     Changing this will probably cause opening the codec to fail with an
      invalid argument.  To see the valid encoder pixel formats, use find-encoder
      and analyze the `:pix-fmts` member.
   * `:encoder-name` - Name (or integer codec id) of the encoder to use.
