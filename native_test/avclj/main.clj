@@ -48,6 +48,8 @@
     )
   )
 
+(println (System/getProperty "tech.v3.datatype.graal-native"))
+
 (defn img-tensor
   [shape ^long offset]
   (dtt/compute-tensor shape

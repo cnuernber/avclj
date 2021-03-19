@@ -3,7 +3,7 @@
 set -e
 
 rm -rf classes && mkdir classes
-clj -X:depstar
+clojure -X:depstar
 
 $GRAALVM_HOME/bin/native-image \
     --report-unsupported-elements-at-runtime \

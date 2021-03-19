@@ -1,6 +1,6 @@
 {:paths ["src" "classes" "generated_classes" "native_test"]
  :deps {org.clojure/clojure            {:mvn/version "1.10.2" :scope "provided"}
-        cnuernber/dtype-next           {:mvn/version "6.19"}
+        cnuernber/dtype-next           {:mvn/version "6.20"}
         techascent/tech.io             {:mvn/version "4.03"}
         net.java.dev.jna/jna           {:mvn/version "5.7.0"}}
  :aliases
@@ -27,9 +27,7 @@
   :depstar
   {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.0.193"}}
    :ns-default hf.depstar
-   :jvm-opts ["-Dtech.v3.datatype.graal-native=true"
-              "-Dclojure.compiler.direct-linking=true"
-              "-Dclojure.spec.skip-macros=true"]
+   :aliases [:graal-compile]
    :exec-fn hf.depstar/uberjar
    :exec-args {:group-id "cnuernber"
                :artifact-id "avclj"
@@ -37,7 +35,11 @@
                :sync-pom true
                :aot true
                :main-class avclj.main
-               :jar "target/avclj-uber.jar"}}
+               :jar "target/avclj-uber.jar"
+               ;;Disable tensor code generation and ensure direct linking.
+               :jvm-opts ["-Dtech.v3.datatype.graal-native=true"
+                          "-Dclojure.compiler.direct-linking=true"
+                          "-Dclojure.spec.skip-macros=true"]}}
   :test
   {:extra-deps {com.cognitect/test-runner
                 {:git/url "https://github.com/cognitect-labs/test-runner"
