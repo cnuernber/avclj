@@ -70,6 +70,9 @@
 
 (defonce avformat (dt-ffi/library-singleton #'avformat-def))
 (dt-ffi/library-singleton-reset! avformat)
+(defn set-library-instance!
+  [lib-instance]
+  (dt-ffi/library-singleton-set-instance! avformat lib-instance))
 
 
 (defn initialize!

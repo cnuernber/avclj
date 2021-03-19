@@ -39,6 +39,9 @@
 
 (defonce lib (dt-ffi/library-singleton #'avutil-def))
 (dt-ffi/library-singleton-reset! lib)
+(defn set-library-instance!
+  [lib-instance]
+  (dt-ffi/library-singleton-set-instance! lib lib-instance))
 
 (defn initialize!
   []

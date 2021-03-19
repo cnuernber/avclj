@@ -5,3 +5,6 @@ classes
 cpptest/a.out
 *mp4
 test/data
+generated_classes
+target
+pom.xml

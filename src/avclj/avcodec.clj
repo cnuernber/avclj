@@ -113,6 +113,9 @@
 
 
 (defonce ^:private lib (dt-ffi/library-singleton #'avcodec-fns))
+(defn set-library-instance!
+  [lib-instance]
+  (dt-ffi/library-singleton-set-instance! lib lib-instance))
 
 ;;Safe to call on uninitialized library.  If the library is initialized, however,
 ;;a new library instance is created from the latest avcodec-fns
