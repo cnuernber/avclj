@@ -39,6 +39,8 @@ order to bind into the libavcodec pathways.  You will need:
 Then, after checking under generated_classes to be sure the class generation mechanism
 worked, simply run `scripts/compile`.
 
+* [this is how I did it](https://github.com/cnuernber/avclj/blob/01685a4f0286bd7c39a0decf8e5a69d2a897d835/native_test/avclj/main.clj)
+
 
 ## Extra Information
  
