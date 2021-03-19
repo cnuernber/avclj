@@ -26,7 +26,6 @@
                             avclj.codec-ids]}}
   :depstar
   {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.0.193"}}
-   :replace-paths ["src" "classes" "native_test" "generated_classes"]
    :ns-default hf.depstar
    :jvm-opts ["-Dtech.v3.datatype.graal-native=true"
               "-Dclojure.compiler.direct-linking=true"
