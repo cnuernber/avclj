@@ -56,6 +56,9 @@ referenced from the main class of the uberjar so that graalvm will initialized i
 Your export file really needs to have only non-typehinted global functions referencing 
 state that your main function in your jarfile also references.
 
+* [library export file](https://github.com/cnuernber/avclj/blob/master/native_test/avclj/libavclj.clj)
+* [cpp encoder using referenced functions](https://github.com/cnuernber/avclj/blob/master/library/testencode.cpp)
+
 
 ## Extra Information
  
