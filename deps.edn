@@ -1,6 +1,6 @@
 {:paths ["src" "classes" "generated_classes" "native_test"]
  :deps {org.clojure/clojure            {:mvn/version "1.10.2" :scope "provided"}
-        cnuernber/dtype-next           {:mvn/version "6.21"}
+        cnuernber/dtype-next           {:mvn/version "6.22"}
         techascent/tech.io             {:mvn/version "4.03"}
         net.java.dev.jna/jna           {:mvn/version "5.7.0"}}
  :aliases
@@ -34,6 +34,7 @@
                :version "1.00-beta-1"
                :sync-pom true
                :aot true
+               :compile-ns [avclj.main avclj.libavclj]
                :main-class avclj.main
                :jar "target/avclj-uber.jar"
                ;;Disable tensor code generation and ensure direct linking.

@@ -5,6 +5,7 @@
             [avclj.avutil :as avutil]
             [avclj.swscale :as swscale]
             [avclj.av-codec-ids :as codec-ids]
+            [avclj.libavclj-init :as libavclj-init]
             ;;Must be included for graal runtime support
             [tech.v3.datatype.ffi.graalvm-runtime]
             [tech.v3.datatype.ffi :as dt-ffi]
@@ -48,7 +49,6 @@
     )
   )
 
-(println (System/getProperty "tech.v3.datatype.graal-native"))
 
 (defn img-tensor
   [shape ^long offset]
@@ -67,10 +67,7 @@
 
 (defn -main
   [& arglist]
-  (avcodec/set-library-instance! (avclj.avcodec.Bindings.))
-  (avformat/set-library-instance! (avclj.avformat.Bindings.))
-  (avutil/set-library-instance! (avclj.avutil.Bindings.))
-  (swscale/set-library-instance! (avclj.swscale.Bindings.))
+  (libavclj-init/initialize-avclj)
   ;;No need for initialize, that is done already!!
   (let [encoder-name codec-ids/AV_CODEC_ID_H264
         output-fname "graal-native-video.mp4"]
