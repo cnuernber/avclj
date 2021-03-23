@@ -45,21 +45,27 @@ worked, simply run `scripts/compile`.
 ### Graal Native Shared Library
 
 This is using an experimental dtype-next API to export a set of functions from the uberjar to C.
-Same setup as above, but in addition go under 'native_test/avclj/libavclj.clj and 
-run the code in the comment block that shows how to export functions to a graalvm
-library .  Then run `scripts/compile-shared` to get a shared library written to the
-'library' directory.  Then in the 'library' directory, there is a script to compile a c++ 
-executable against the shared library.  It encodes 300 frames or so.  One key lesson 
-learned here is that your library export file cannot have any 'def' or 'defonce' members; 
-these will not get initialized.  Persistent state is recorded in a library init file 
-referenced from the main class of the uberjar so that graalvm will initialized it.
+1. Same setup as above -- you have to go into main.clj to generate the library bindings -- but in 
+addition go under 'native_test/avclj/libavclj.clj and run the code in the comment block that 
+shows how to export functions to a graalvm library.
+2.  Then run `scripts/compile-shared` to get a shared library written to the 'library' directory.  
+3.  Then in the 'library' directory, there is a script to compile a c++ executable against the shared library.  It encodes 300 frames or 
+so.  
+
+One key lesson learned here is that your library export file cannot have any 'def' or 
+'defonce' members; these will not get initialized.  Persistent state is recorded in a library init file 
+referenced from the main class of the uberjar so that the graal native system will initialized it.
 Your export file really needs to have only non-typehinted global functions referencing 
 state that your main function in your jarfile also references.
+
+* [library export file](https://github.com/cnuernber/avclj/blob/master/native_test/avclj/libavclj.clj)
+* [cpp encoder using referenced functions](https://github.com/cnuernber/avclj/blob/master/library/testencode.cpp)
 
 
 ## Extra Information
  
 * [Understanding Rate Control](https://slhck.info/video/2017/03/01/rate-control.html)
+* [FFmpeg H264 Encoding](https://trac.ffmpeg.org/wiki/Encode/H.264)
 
 ## License - GPLv2
 
