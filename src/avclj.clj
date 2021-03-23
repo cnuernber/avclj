@@ -232,7 +232,7 @@ Input data shapes: %s"
     (loop [pkt-retval (long (avcodec/avcodec_receive_packet ctx packet))]
       (when-not (or (== pkt-retval av-error/AVERROR_EAGAIN)
                     (== pkt-retval av-error/AVERROR_EOF))
-        (avcodec/check-error pkt-retval)
+        (avcodec/check-error nil pkt-retval)
         ;;The packet is in the time-base we specified originally for the context but
         ;;the stream's time-base was set during write-header and must be
         ;;respected so we have to convert to the stream's time-base

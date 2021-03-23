@@ -1,6 +1,6 @@
 {:paths ["src" "classes" "generated_classes" "native_test"]
  :deps {org.clojure/clojure            {:mvn/version "1.10.2" :scope "provided"}
-        cnuernber/dtype-next           {:mvn/version "6.22"}
+        cnuernber/dtype-next           {:mvn/version "6.26"}
         techascent/tech.io             {:mvn/version "4.03"}
         net.java.dev.jna/jna           {:mvn/version "5.7.0"}}
  :aliases
@@ -24,6 +24,8 @@
                :source-uri "https://github.com/cnuernber/avclj/blob/master/{filepath}#L{line}"
                :namespaces [avclj
                             avclj.codec-ids]}}
+  :jdk-16
+  {:jvm-opts ["--add-modules" "jdk.incubator.foreign" "-Dforeign.restricted=permit" "--add-opens" "java.base/java.lang=ALL-UNNAMED" "-Djava.library.path=/usr/lib/x86_64-linux-gnu"]}
   :depstar
   {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.0.193"}}
    :ns-default hf.depstar

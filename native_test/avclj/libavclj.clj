@@ -4,7 +4,6 @@
             [avclj.av-codec-ids :as codec-ids]
             [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype.native-buffer :as native-buffer]
-            [tech.v3.resource :as resource]
             [tech.v3.datatype.errors :as errors])
   (:import [java.util.concurrent ConcurrentHashMap]
            [tech.v3.datatype.ffi Pointer]))
@@ -22,16 +21,15 @@
 
 (defn make-h264-encoder
   [height width out-fname input-pix-format-str]
-  (resource/stack-resource-context
-   (let [pix-str (dt-ffi/c->string input-pix-format-str)
-         out-fname (dt-ffi/c->string out-fname)
-         encoder (avclj/make-video-encoder
-                  height width out-fname
-                  {:input-pixfmt pix-str
-                   :encoder-name codec-ids/AV_CODEC_ID_H264})
-         handle (long (System/identityHashCode encoder))]
-     (.put libinit/encoders handle encoder)
-     handle)))
+  (let [pix-str (dt-ffi/c->string input-pix-format-str)
+        out-fname (dt-ffi/c->string out-fname)
+        encoder (avclj/make-video-encoder
+                 height width out-fname
+                 {:input-pixfmt pix-str
+                  :encoder-name codec-ids/AV_CODEC_ID_H264})
+        handle (long (System/identityHashCode encoder))]
+    (.put libinit/encoders handle encoder)
+    handle))
 
 (defn- hdl->encoder
   [hdl]

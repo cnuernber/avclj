@@ -131,15 +131,15 @@
 
 
 (defmacro check-error
-  [error-val]
-  `(do
+  [fn-def & body]
+  `(let [error-val# (long (do ~@body))]
      (errors/when-not-errorf
-      (>= ~error-val 0)
+      (>= error-val# 0)
       "Exception calling avcodec: (%d) - \"%s\""
-      ~error-val (if-let [err-name#  (get av-error/value->error-map ~error-val)]
+      error-val# (if-let [err-name#  (get av-error/value->error-map error-val#)]
                    err-name#
-                   (str-error ~error-val)))
-     ~error-val))
+                   (str-error error-val#)))
+     error-val#))
 
 
 (dt-ffi/define-library-functions avclj.avcodec/avcodec-fns find-avcodec-fn check-error)
