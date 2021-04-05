@@ -1,7 +1,5 @@
 {:paths ["src" "classes" "generated_classes" "native_test"]
- :deps {org.clojure/clojure            {:mvn/version "1.10.2" :scope "provided"}
-        cnuernber/dtype-next           {:mvn/version "7.00"}
-        techascent/tech.io             {:mvn/version "4.03"}
+ :deps {cnuernber/dtype-next           {:mvn/version "7.04"}
         net.java.dev.jna/jna           {:mvn/version "5.7.0"}}
  :aliases
  {:codox

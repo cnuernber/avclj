@@ -50,7 +50,6 @@ nil
             [tech.v3.datatype.native-buffer :as native-buffer]
             [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype.dechunk-map :refer [dechunk-map]]
-            [tech.v3.io :as io]
             [avclj.avcodec :as avcodec]
             [avclj.swscale :as swscale]
             [avclj.avformat :as avformat]
@@ -231,6 +230,7 @@ Input data shapes: %s"
       (avcodec/avcodec_send_frame ctx nil))
     (loop [pkt-retval (long (avcodec/avcodec_receive_packet ctx packet))]
       (when-not (or (== pkt-retval av-error/AVERROR_EAGAIN)
+                    (== pkt-retval av-error/AVERROR_EAGAIN_MAC)
                     (== pkt-retval av-error/AVERROR_EOF))
         (avcodec/check-error nil pkt-retval)
         ;;The packet is in the time-base we specified originally for the context but

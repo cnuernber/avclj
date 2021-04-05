@@ -32,6 +32,8 @@
    "AVERROR_HTTP_OTHER_4XX" -1482175736
    "AVERROR_HTTP_SERVER_ERROR" -1482175992
    "AVERROR_EAGAIN" -11
+   ;;Thanks to phronmophobic
+   "AVERROR_EAGAIN_MAC" -35
    })
 
 (def value->error-map (set/map-invert error->value-map))
