@@ -57,6 +57,10 @@
                                      :argtypes [['par :pointer]
                                                 ['codec :pointer]]
                                      :doc "Initialize parameter struct from the codec"}
+   :avcodec_parameters_to_context {:rettype :int32
+                                   :argtypes [['codec :pointer]
+                                              ['par :pointer]]
+                                   :doc "Initialize codec params from param struct"}
    :avcodec_open2 {:rettype :int32
                    :argtypes [['c :pointer]
                               ['codec :pointer]
@@ -73,7 +77,7 @@
    :av_packet_alloc {:rettype :pointer
                      :doc "allocate an av packet"}
    :av_packet_free {:rettype :void
-                    :argtypes [['packet :pointer]]
+                    :argtypes [['packet :pointer]] ;;AVPacket**
                     :doc "free an av packet"}
    :av_packet_rescale_ts {:rettype :void
                           :argtypes [['pkt :pointer]
@@ -96,6 +100,55 @@
                             :check-error? true
                             :argtypes [['frame :pointer]]
                             :doc "Ensure frame is writable"}
+   :avcodec_send_packet {:rettype :int32
+                         :argtypes [['avctx :pointer] ;; AVCodecContext *avctx
+                                    ['avpkt :pointer]]  ;; const AVPacket *avpkt
+                         :doc "Supply raw packet data as input to a decoder.
+Internally, this call will copy relevant AVCodecContext fields, which can
+influence decoding per-packet, and apply them when the packet is actually
+decoded. (For example AVCodecContext.skip_frame, which might direct the
+decoder to drop the frame contained by the packet sent with this function.)
+
+@warning The input buffer, avpkt->data must be AV_INPUT_BUFFER_PADDING_SIZE
+         larger than the actual read bytes because some optimized bitstream
+         readers read 32 or 64 bits at once and could read over the end.
+
+@note The AVCodecContext MUST have been opened with @ref avcodec_open2()
+      before packets may be fed to the decoder.
+
+Returns: 0 on success, otherwise negative error code:
+     AVERROR(EAGAIN):   input is not accepted in the current state - user
+                        must read output with avcodec_receive_frame() (once
+                        all output is read, the packet should be resent, and
+                        the call will not fail with EAGAIN).
+     AVERROR_EOF:       the decoder has been flushed, and no new packets can
+                        be sent to it (also returned if more than 1 flush
+                        packet is sent)
+     AVERROR(EINVAL):   codec not opened, it is an encoder, or requires flush
+     AVERROR(ENOMEM):   failed to add packet to internal queue, or similar
+     other errors: legitimate decoding errors"}
+   :avcodec_receive_frame {:rettype :int32
+                           :argtypes [['avctx :pointer]
+                                      ['frame :pointer]]
+                           :doc "Return decoded output data from a decoder.
+
+@param avctx codec context
+@param frame This will be set to a reference-counted video or audio
+             frame (depending on the decoder type) allocated by the
+             decoder. Note that the function will always call
+             av_frame_unref(frame) before doing anything else.
+
+@return
+     0:                 success, a frame was returned
+     AVERROR(EAGAIN):   output is not available in this state - user must try
+                        to send new input
+     AVERROR_EOF:       the decoder has been fully flushed, and there will be
+                        no more output frames
+     AVERROR(EINVAL):   codec not opened, or it is an encoder
+     AVERROR_INPUT_CHANGED:   current decoded frame has changed parameters
+                              with respect to first decoded frame. Applicable
+                              when flag AV_CODEC_FLAG_DROPCHANGED is set.
+     other negative values: legitimate decoding errors"}
    :avcodec_send_frame {:rettype :int32
                         :check-error? true
                         :argtypes [['ctx :pointer]

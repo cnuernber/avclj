@@ -1,6 +1,7 @@
 (ns avclj.avutil
   (:require [tech.v3.datatype.ffi :as dt-ffi]
             [avclj.avcodec :refer [check-error]]
+            [tech.v3.datatype.errors :as errors]
             [tech.v3.resource :as resource])
   (:import [tech.v3.datatype.ffi Pointer]))
 
@@ -76,6 +77,28 @@
 (defn dict-count
   [dict]
   (av_dict_count (Pointer. (dict 0))))
+
+
+
+;;enum AVMediaType
+
+(def ^{:tag 'long} AVMEDIA_TYPE_UNKNOWN -1);;< Usually treated as AVMEDIA_TYPE_DATA
+(def ^{:tag 'long} AVMEDIA_TYPE_VIDEO 0)
+(def ^{:tag 'long} AVMEDIA_TYPE_AUDIO 1)
+(def ^{:tag 'long} AVMEDIA_TYPE_DATA 2);;< Opaque data information usually continuous
+(def ^{:tag 'long}  AVMEDIA_TYPE_SUBTITLE 3)
+(def ^{:tag 'long} AVMEDIA_TYPE_ATTACHMENT 4);;< Opaque data information usually sparse
+(def ^{:tag 'long} AVMEDIA_TYPE_NB 5)
+
+
+(defn media-type->int
+  [media-type]
+  (if-let [retval (get {:video AVMEDIA_TYPE_VIDEO
+                        :audio AVMEDIA_TYPE_AUDIO}
+                       media-type)]
+    retval
+    (errors/throwf "Failed to find media type %s" media-type)))
+
 
 
 (def ^{:tag 'long} AV_DICT_MATCH_CASE      1)  ;; /**< Only get an entry with exact-case key match. Only relevant in av_dict_get(). */

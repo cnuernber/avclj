@@ -45,10 +45,12 @@ nil
   "
 
   (:require [tech.v3.datatype :as dtype]
+            [tech.v3.datatype.casting :as casting]
             [tech.v3.datatype.struct :as dt-struct]
             [tech.v3.datatype.errors :as errors]
             [tech.v3.datatype.native-buffer :as native-buffer]
             [tech.v3.datatype.ffi :as dt-ffi]
+            [tech.v3.datatype.ffi.size-t :as dt-ffi-size-t]
             [tech.v3.datatype.dechunk-map :refer [dechunk-map]]
             [avclj.avcodec :as avcodec]
             [avclj.swscale :as swscale]
@@ -56,6 +58,8 @@ nil
             [avclj.avutil :as avutil]
             [avclj.av-pixfmt :as av-pixfmt]
             [avclj.av-error :as av-error]
+            [avclj.av-context :as av-context]
+            [tech.v3.resource :as resource]
             [clojure.tools.logging :as log]
             [clojure.java.io :as clj-io])
   (:import [java.io OutputStream]
@@ -72,6 +76,14 @@ nil
 each data plane.  If you are passing in a nio buffer, ensure to require
 'tech.v3.datatype.nio-buffer` for zero-copy support.  If frame is not a persistent
 vector it is assumed to a single buffer and is wrapped in a persistent vector"))
+
+
+(defprotocol PVideoDecoder
+  (decode-frame! [decoder]
+    "Decode a frame returning a persistent vector of buffers, one for each data plane
+in the frame.  When this function returns nil there are no more frames to decode.
+Users can expect the frames will be decoded in-place into the same buffers so do
+not simply save the vector of data planes off."))
 
 
 (defn initialize!
@@ -399,3 +411,100 @@ Input data shapes: %s"
   (^java.lang.AutoCloseable
    [height width output-fname]
    (make-video-encoder height width output-fname nil)))
+
+
+(deftype VideoStreamDecoder [fmt-ctx decoder-ctx
+                             pkt frame
+                             ^long stream-index
+                             ^:unsynchronized-mutable frame-stage]
+  java.lang.AutoCloseable
+  (close [this]
+    (avcodec/free-packet pkt)
+    (avcodec/free-frame frame)
+    (avcodec/free-context decoder-ctx)
+    (resource/stack-resource-context
+     (let [ctx-ptr (->> (dt-ffi/->pointer fmt-ctx)
+                        (.address)
+                        (dt-ffi/make-ptr :pointer))]
+       (avformat/avformat_close_input ctx-ptr))))
+
+  PVideoDecoder
+  (decode-frame! [this]
+    (loop [next-frame nil]
+      (log/infof "Decode-frame %s" frame-stage next-frame)
+      (if (and (nil? next-frame)
+               (not= frame-stage :finished))
+        (recur
+         (case frame-stage
+           :reading
+           (let [frame-ret (long (avformat/av_read_frame fmt-ctx pkt))]
+             (log/infof "frame-ret %s" frame-ret)
+             (if (< frame-ret 0)
+               (do
+                 (avcodec/avcodec_send_packet decoder-ctx nil)
+                 (set! frame-stage :finalizing)
+                 nil)
+               (do
+                 (log/infof "Packet stream %d" (pkt :stream-index))
+                 (when (== (long (pkt :stream-index)) stream-index)
+                   (do
+                     (set! frame-stage :decoding)
+                     (avcodec/avcodec_send_packet decoder-ctx pkt)))
+                 (avcodec/av_packet_unref pkt)
+                 nil)))
+           (:decoding :finalizing)
+           (let [res (avcodec/avcodec_receive_frame decoder-ctx frame)]
+             (log/infof "receive-frame result : %d" res)
+             (if (< res 0)
+               (do (if (identical? frame-stage :decoding)
+                     (set! frame-stage :reading)
+                     (set! frame-stage :finished))
+                   nil)
+               (raw-frame->buffers frame)))
+           :finished
+           nil))
+        next-frame))))
+
+
+(defn make-video-decoder
+  "Make an auto-closeable video decoder."
+  [fname & [options]]
+  (let [file-fmt-ctx-ptr (dt-ffi/make-ptr :pointer 0)
+        _ (errors/when-not-errorf
+           (>= (avformat/avformat_open_input file-fmt-ctx-ptr fname nil nil) 0)
+           "Failed to open file %s" fname)
+        fmt-ctx  (dt-ffi/ptr->struct (:datatype-name @av-context/av-format-context-def*)
+                                     (Pointer. (file-fmt-ctx-ptr 0)))]
+    (try
+      (errors/when-not-errorf
+       (>= (avformat/avformat_find_stream_info fmt-ctx nil) 0)
+       "Failed to find stream info")
+      (let [codec-ptr (dt-ffi/make-ptr :pointer 0)
+            stream-index (avformat/av_find_best_stream
+                          fmt-ctx (avutil/media-type->int :video) -1 -1
+                          codec-ptr 0)
+            _ (errors/when-not-errorf
+               (>= stream-index 0)
+               "Failed to find best stream")
+            codec (dt-ffi/ptr->struct (:datatype-name @av-context/codec-def*)
+                                      (Pointer. (codec-ptr 0)))
+            dec-ctx (avcodec/alloc-context codec)
+            ptr-dt (dt-ffi-size-t/ptr-t-type)
+            dt-size (casting/numeric-byte-width ptr-dt)
+            n-streams (long (fmt-ctx :nb-streams))
+            streams-ptr (native-buffer/wrap-address
+                         (fmt-ctx :streams)
+                         (* n-streams dt-size)
+                         ptr-dt :little-endian nil)
+            stream (dt-ffi/ptr->struct (:datatype-name @av-context/av-stream-def*)
+                                       (Pointer. (streams-ptr stream-index)))
+            _ (avcodec/avcodec_parameters_to_context dec-ctx (Pointer. (stream :codecpar)))
+            _ (errors/when-not-errorf
+               (>= (avcodec/avcodec_open2 dec-ctx codec nil) 0)
+               "Failed to open decoder context")
+            frame (avcodec/alloc-frame)
+            pkt (avcodec/alloc-packet)]
+        (VideoStreamDecoder. fmt-ctx dec-ctx pkt frame stream-index :reading))
+      (catch Throwable e
+        (avformat/avformat_close_input file-fmt-ctx-ptr)
+        (throw e)))))

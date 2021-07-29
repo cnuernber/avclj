@@ -1,5 +1,5 @@
 {:paths ["src" "classes" "generated_classes" "native_test"]
- :deps {cnuernber/dtype-next           {:mvn/version "7.04"}
+ :deps {cnuernber/dtype-next           {:mvn/version "8.022"}
         net.java.dev.jna/jna           {:mvn/version "5.7.0"}}
  :aliases
  {:codox
