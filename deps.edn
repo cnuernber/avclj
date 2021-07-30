@@ -16,9 +16,9 @@
                :source-paths ["src"]
                :output-path "docs"
                :doc-paths ["topics"]
-               :group-id "cnuernber"
+               :group-id "com.cnuernber"
+               :arg-paths [[:aliases :depstar :exec-args]]
                :artifact-id "avclj"
-               :version "1.00-beta-1"
                :source-uri "https://github.com/cnuernber/avclj/blob/master/{filepath}#L{line}"
                :namespaces [avclj
                             avclj.codec-ids]}}
