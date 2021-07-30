@@ -545,12 +545,13 @@ Input data shapes: %s"
 
   Example:
 
-```clojure
-user> (require '[tech.v3.datatype :as dtype])
+  ```clojure
+
+user> (require '[avclj :as avclj])
+nil
+user> (require '[tech.v3.tensor :as dtt])
 nil
 user> (require '[tech.v3.libs.buffered-image :as bufimg])
-nil
-user> (require '[avclj :as avclj])
 nil
 user> (avclj/initialize!)
 :ok
@@ -561,25 +562,29 @@ user> (meta decoder)
  :width 256,
  :height 256,
  :pix-fmt [\"AV_PIX_FMT_BGR24\"]}
-user> ;;frame data is a sequence of buffers, the exact format is dependent upon pix-fmt
 user> (def frame-data (avclj/decode-frame! decoder))
 #'user/frame-data
-user> frame-data
-[#native-buffer@0x00007F3C17383FC0<uint8>[196608]
-[250, 253, 251, 250, 253, 251, 250, 253, 251, 250, 253, 251, 250, 253, 251, 250, 253, 251, 250, 253...]]
+user> (first frame-data)
+#tech.v3.tensor<uint8>[256 256 3]
+[[[250 253 251]
+  [250 253 251]
+  [250 253 251]
+  ...
+  [  0   0   0]
+  [  0   0   0]
+  [  0   0   0]]]
 user> (meta frame-data)
-{:pts 0, :width 256, :height 256}
-user> ;;use (/ (* pts num) den) to get actual frame ms offset.
+{:pts 0, :width 256, :height 256, :linesize 768}
 user> (def dest-img (bufimg/new-image ((meta decoder) :height) ((meta decoder) :width) :byte-bgr))
 #'user/dest-img
+user> (require '[tech.v3.datatype :as dtype])
+nil
 user> (dtype/copy! (first frame-data) dest-img)
-#object[java.awt.image.BufferedImage 0x115e9eaf \"BufferedImage@115e9eaf: type = 5 ColorModel: #pixelBits = 24 numComponents = 3 color space = java.awt.color.ICC_ColorSpace@154aafe6 transparency = 1 has alpha = false isAlphaPre = false ByteInterleavedRaster: width = 256 height = 256 #numDataElements 3 dataOff[0] = 2\"]
+#object[java.awt.image.BufferedImage 0x1888c431 \"BufferedImage@1888c431: type = 5 ColorModel: #pixelBits = 24 numComponents = 3 color space = java.awt.color.ICC_ColorSpace@7fb1c295 transparency = 1 has alpha = false isAlphaPre = false ByteInterleavedRaster: width = 256 height = 256 #numDataElements 3 dataOff[0] = 2\"]
 user> (bufimg/save! dest-img \"test.png\")
 true
 user> (.close decoder)
-
-
-
+nil
 ```
   "
   [fname & [{:keys [output-pixfmt output-height output-width]
