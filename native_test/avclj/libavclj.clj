@@ -78,5 +78,5 @@
         #'close-encoder {:rettype :int64
                          :argtypes [['encoder :int64]]}
         }
-       'avljc/LibAVClj nil)))
+       'avljc.LibAVClj nil)))
   )
