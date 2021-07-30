@@ -524,13 +524,21 @@ Input data shapes: %s"
 (defn make-video-decoder
   "Make an auto-closeable video decoder - you can use this decoder with `with-open`.
   Do not assume that you can keep a reference to the frame data; it is only good
-  until the next `decode-frame!` call.
+  until the next `decode-frame!` call.  The decoder will do simple scaling and pixel
+  format translations using highly optimized ffmpeg code.
+
+  The decoder returns a frame of data which in ffmpeg terms means a sequence of buffers.
+  For the RGB-based pixel formats the first data-frame will be a tensor reshaped to the
+  appropriate size.
+
+
 
   :Options
 
-  * `:output-pixfmt` - a valid ffmpeg pixfmt string.  Defaults to AV_PIX_FMT_BGR24 as this
+  * `:output-pixfmt` - a valid ffmpeg pixfmt string.  Defaults to `\"AV_PIX_FMT_BGR24\"` as this
      corresponds to buffered-image :byte-bgr format.  For list of valid pixfmt strings
-     see `(keys avclj.av-pixfmt/pixvmt-name-value-map)`.
+     see `(keys avclj.av-pixfmt/pixvmt-name-value-map)`.  I recommend sticking to
+     either `\"AV_PIX_FMT_RGB24\"` or `\"AV_PIX_FMT_BGR24\"`.
   * `:output-height`, `:output-width` - If none are specified, use video width/height.  If
     one is specified use aspect-ratio-preserving scaling to find the other.  If both are
     specified use these precisely.  This may distort the image.
