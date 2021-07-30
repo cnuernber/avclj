@@ -531,6 +531,11 @@ Input data shapes: %s"
   For the RGB-based pixel formats the first data-frame will be a tensor reshaped to the
   appropriate size.
 
+  Decoders have metadata on them which indicate the size of the image, the pixel format,
+  and the time base of the decoder.  Each frame has metadata on it which indicates
+  again the width/height and more important `:pts` which when transformed by the
+  time-base information yields the millisecond offset of the frame.
+
 
 
   :Options
