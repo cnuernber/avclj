@@ -545,8 +545,7 @@ Input data shapes: %s"
 
   Example:
 
-  ```clojure
-
+```clojure
 user> (require '[avclj :as avclj])
 nil
 user> (require '[tech.v3.tensor :as dtt])
@@ -585,8 +584,7 @@ user> (bufimg/save! dest-img \"test.png\")
 true
 user> (.close decoder)
 nil
-```
-  "
+```"
   [fname & [{:keys [output-pixfmt output-height output-width]
              :or {output-pixfmt "AV_PIX_FMT_BGR24"}}]]
   (let [file-fmt-ctx-ptr (dt-ffi/make-ptr :pointer 0)
