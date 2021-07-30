@@ -30,7 +30,7 @@
    :exec-fn hf.depstar/jar
    :exec-args {:group-id "com.cnuernber"
                :artifact-id "avclj"
-               :version "1.000"
+               :version "1.001"
                :sync-pom true
                :jar "target/avclj.jar"}}
   :deploy

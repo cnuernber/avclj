@@ -51,6 +51,7 @@ nil
             [tech.v3.datatype.native-buffer :as native-buffer]
             [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype.ffi.size-t :as dt-ffi-size-t]
+            [tech.v3.tensor :as dtt]
             [tech.v3.datatype.dechunk-map :refer [dechunk-map]]
             [avclj.avcodec :as avcodec]
             [avclj.swscale :as swscale]
@@ -152,11 +153,40 @@ the next decode-frame! call"))
        (sort)))
 
 
+(defn- pixfmt->n-bytes
+  [^long pixfmt]
+  (condp = pixfmt
+    av-pixfmt/AV_PIX_FMT_RGB24 3
+    av-pixfmt/AV_PIX_FMT_BGR24 3
+    av-pixfmt/AV_PIX_FMT_ARGB 4
+    av-pixfmt/AV_PIX_FMT_RGBA 4
+    av-pixfmt/AV_PIX_FMT_ABGR 4
+    av-pixfmt/AV_PIX_FMT_BGRA 4
+    av-pixfmt/AV_PIX_FMT_GRAY8 1
+    nil))
+
+
+(defn- fix-frame-padding
+  [data ^long width pixfmt]
+  (if-let [n-channels (pixfmt->n-bytes pixfmt)]
+    (let [cropsize (* width n-channels)
+          [_ dlinesize] (dtype/shape data)]
+      (->
+       (if (not= cropsize dlinesize)
+         (dtt/select data :all (range cropsize))
+         data)
+       ;;reshape to be more image like
+       (dtt/reshape [(first (dtype/shape data)) width n-channels])))
+    data))
+
+
 (defn- raw-frame->buffers
   "Zero-copy conversion ofa frame to a vector of buffers, one for each of the
   frame's data planes."
   [^Map frame]
-  (let [fheight (long (.get frame :height))]
+  (let [fheight (long (.get frame :height))
+        fwidth (long (.get frame :width))
+        pixfmt (long (.get frame :format))]
     ;;frames may be up to 8 planes of data
     (->> (range 8)
          (dechunk-map (juxt identity #(.get frame [:linesize %])))
@@ -168,7 +198,9 @@ the next decode-frame! call"))
                       (-> (native-buffer/wrap-address data-ptr
                                                       (* fheight linesize)
                                                       frame)
-                          (native-buffer/set-native-datatype :uint8))))))))))
+                          (native-buffer/set-native-datatype :uint8)
+                          (dtt/reshape [fheight linesize])
+                          (fix-frame-padding fwidth pixfmt))))))))))
 
 
 (defn frame-buffer-shape
@@ -481,8 +513,9 @@ Input data shapes: %s"
                     (raw-frame->buffers sws-frame))
                   (raw-frame->buffers frame))
                 (with-meta {:pts (frame :pts)
-                            :width (frame :width)
-                            :height (frame :height)}))))
+                            :width (sws-frame :width)
+                            :height (sws-frame :height)
+                            :linesize (sws-frame :linesize)}))))
            :finished
            nil))
         next-frame))))
@@ -536,6 +569,9 @@ user> (dtype/copy! (first frame-data) dest-img)
 user> (bufimg/save! dest-img \"test.png\")
 true
 user> (.close decoder)
+
+
+
 ```
   "
   [fname & [{:keys [output-pixfmt output-height output-width]
