@@ -3,7 +3,7 @@
 set -e
 
 rm -rf classes && mkdir classes
-clojure -X:depstar
+clojure -X:uberjar
 
 pushd library
 
