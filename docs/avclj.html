@@ -39,8 +39,8 @@ nil
 <p>The decoder returns a frame of data which in ffmpeg terms means a sequence of buffers.  For the RGB-based pixel formats the first data-frame will be a tensor reshaped to the  appropriate size.</p>
 <p>:Options</p>
 <ul>
-  <li><code>:output-pixfmt</code> - a valid ffmpeg pixfmt string. Defaults to <code>"AV_PIX_FMT_BGR24"</code> as this  corresponds to buffered-image :byte-bgr format. For list of valid pixfmt strings  see <code>(keys avclj.av-pixfmt/pixvmt-name-value-map)</code>. I recommend sticking to  either <code>"AV_PIX_FMT_RGB24"</code> or <code>"AV_PIX_FMT_BGR24"</code>.</li>
-  <li><code>:output-height</code>, <code>:output-width</code> - If none are specified, use video width/height. If one is specified use aspect-ratio-preserving scaling to find the other. If both are specified use these precisely. This may distort the image.</li>
+  <li><code>:output-pixfmt</code> - a valid ffmpeg pixfmt string. Defaults to <code>"AV_PIX_FMT_BGR24"</code> as this  corresponds to buffered-image :byte-bgr format. For list of valid pixfmt strings  see <code>(keys avclj.av-pixfmt/pixfmt-name-value-map)</code>. I recommend sticking to  either <code>"AV_PIX_FMT_RGB24"</code> or <code>"AV_PIX_FMT_BGR24"</code>.</li>
+  <li><code>:output-height</code>, <code>:output-width</code> - If none are specified, use video width/height. If  one is specified use aspect-ratio-preserving scaling to find the other. If both are  specified use these precisely - which may distort the image.</li>
 </ul>
 <p>Example:</p>
 <pre><code class="clojure">user&gt; (require '[avclj :as avclj])

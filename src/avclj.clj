@@ -537,11 +537,11 @@ Input data shapes: %s"
 
   * `:output-pixfmt` - a valid ffmpeg pixfmt string.  Defaults to `\"AV_PIX_FMT_BGR24\"` as this
      corresponds to buffered-image :byte-bgr format.  For list of valid pixfmt strings
-     see `(keys avclj.av-pixfmt/pixvmt-name-value-map)`.  I recommend sticking to
+     see `(keys avclj.av-pixfmt/pixfmt-name-value-map)`.  I recommend sticking to
      either `\"AV_PIX_FMT_RGB24\"` or `\"AV_PIX_FMT_BGR24\"`.
   * `:output-height`, `:output-width` - If none are specified, use video width/height.  If
-    one is specified use aspect-ratio-preserving scaling to find the other.  If both are
-    specified use these precisely.  This may distort the image.
+     one is specified use aspect-ratio-preserving scaling to find the other.  If both are
+     specified use these precisely - which may distort the image.
 
   Example:
 
