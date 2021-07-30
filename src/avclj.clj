@@ -64,7 +64,8 @@ nil
             [clojure.java.io :as clj-io])
   (:import [java.io OutputStream]
            [java.util Map]
-           [tech.v3.datatype.ffi Pointer]))
+           [tech.v3.datatype.ffi Pointer]
+           [clojure.lang IMeta]))
 
 
 (set! *warn-on-reflection* true)
@@ -82,8 +83,8 @@ vector it is assumed to a single buffer and is wrapped in a persistent vector"))
   (decode-frame! [decoder]
     "Decode a frame returning a persistent vector of buffers, one for each data plane
 in the frame.  When this function returns nil there are no more frames to decode.
-Users can expect the frames will be decoded in-place into the same buffers so do
-not simply save the vector of data planes off."))
+Users can expect the frames will be decoded in-place so the data is only valid until
+the next decode-frame! call"))
 
 
 (defn initialize!
@@ -416,12 +417,20 @@ Input data shapes: %s"
 (deftype VideoStreamDecoder [fmt-ctx decoder-ctx
                              pkt frame
                              ^long stream-index
-                             ^:unsynchronized-mutable frame-stage]
+                             ^:unsynchronized-mutable frame-stage
+                             sws-ctx
+                             ^Map sws-frame
+                             metadata]
+  IMeta
+  (meta [this] metadata)
   java.lang.AutoCloseable
   (close [this]
     (avcodec/free-packet pkt)
     (avcodec/free-frame frame)
     (avcodec/free-context decoder-ctx)
+    (when sws-ctx
+      (avcodec/free-frame sws-frame)
+      (swscale/sws_freeContext sws-ctx))
     (resource/stack-resource-context
      (let [ctx-ptr (->> (dt-ffi/->pointer fmt-ctx)
                         (.address)
@@ -430,22 +439,22 @@ Input data shapes: %s"
 
   PVideoDecoder
   (decode-frame! [this]
+    (when (or (identical? :decoding frame-stage)
+              (identical? :finalizing frame-stage))
+      (avcodec/av_frame_unref frame))
     (loop [next-frame nil]
-      (log/infof "Decode-frame %s" frame-stage next-frame)
       (if (and (nil? next-frame)
                (not= frame-stage :finished))
         (recur
          (case frame-stage
            :reading
            (let [frame-ret (long (avformat/av_read_frame fmt-ctx pkt))]
-             (log/infof "frame-ret %s" frame-ret)
              (if (< frame-ret 0)
                (do
                  (avcodec/avcodec_send_packet decoder-ctx nil)
                  (set! frame-stage :finalizing)
                  nil)
                (do
-                 (log/infof "Packet stream %d" (pkt :stream-index))
                  (when (== (long (pkt :stream-index)) stream-index)
                    (do
                      (set! frame-stage :decoding)
@@ -454,21 +463,83 @@ Input data shapes: %s"
                  nil)))
            (:decoding :finalizing)
            (let [res (avcodec/avcodec_receive_frame decoder-ctx frame)]
-             (log/infof "receive-frame result : %d" res)
              (if (< res 0)
                (do (if (identical? frame-stage :decoding)
                      (set! frame-stage :reading)
                      (set! frame-stage :finished))
                    nil)
-               (raw-frame->buffers frame)))
+               (->
+                (if sws-ctx
+                  (do
+                    (avcodec/av_frame_make_writable sws-frame)
+                    (swscale/sws_scale sws-ctx
+                                       (dt-ffi/struct-member-ptr frame :data)
+                                       (dt-ffi/struct-member-ptr frame :linesize)
+                                       0 (:height frame)
+                                       (dt-ffi/struct-member-ptr sws-frame :data)
+                                       (dt-ffi/struct-member-ptr sws-frame :linesize))
+                    (raw-frame->buffers sws-frame))
+                  (raw-frame->buffers frame))
+                (with-meta {:pts (frame :pts)
+                            :width (frame :width)
+                            :height (frame :height)}))))
            :finished
            nil))
         next-frame))))
 
 
 (defn make-video-decoder
-  "Make an auto-closeable video decoder."
-  [fname & [options]]
+  "Make an auto-closeable video decoder - you can use this decoder with `with-open`.
+  Do not assume that you can keep a reference to the frame data; it is only good
+  until the next `decode-frame!` call.
+
+  :Options
+
+  * `:output-pixfmt` - a valid ffmpeg pixfmt string.  Defaults to AV_PIX_FMT_BGR24 as this
+     corresponds to buffered-image :byte-bgr format.  For list of valid pixfmt strings
+     see `(keys avclj.av-pixfmt/pixvmt-name-value-map)`.
+  * `:output-height`, `:output-width` - If none are specified, use video width/height.  If
+    one is specified use aspect-ratio-preserving scaling to find the other.  If both are
+    specified use these precisely.  This may distort the image.
+
+  Example:
+
+```clojure
+user> (require '[tech.v3.datatype :as dtype])
+nil
+user> (require '[tech.v3.libs.buffered-image :as bufimg])
+nil
+user> (require '[avclj :as avclj])
+nil
+user> (avclj/initialize!)
+:ok
+user> (def decoder (avclj/make-video-decoder \"test/data/test-video.mp4\"))
+#'user/decoder
+user> (meta decoder)
+{:time-base {:num 1, :den 15360},
+ :width 256,
+ :height 256,
+ :pix-fmt [\"AV_PIX_FMT_BGR24\"]}
+user> ;;frame data is a sequence of buffers, the exact format is dependent upon pix-fmt
+user> (def frame-data (avclj/decode-frame! decoder))
+#'user/frame-data
+user> frame-data
+[#native-buffer@0x00007F3C17383FC0<uint8>[196608]
+[250, 253, 251, 250, 253, 251, 250, 253, 251, 250, 253, 251, 250, 253, 251, 250, 253, 251, 250, 253...]]
+user> (meta frame-data)
+{:pts 0, :width 256, :height 256}
+user> ;;use (/ (* pts num) den) to get actual frame ms offset.
+user> (def dest-img (bufimg/new-image ((meta decoder) :height) ((meta decoder) :width) :byte-bgr))
+#'user/dest-img
+user> (dtype/copy! (first frame-data) dest-img)
+#object[java.awt.image.BufferedImage 0x115e9eaf \"BufferedImage@115e9eaf: type = 5 ColorModel: #pixelBits = 24 numComponents = 3 color space = java.awt.color.ICC_ColorSpace@154aafe6 transparency = 1 has alpha = false isAlphaPre = false ByteInterleavedRaster: width = 256 height = 256 #numDataElements 3 dataOff[0] = 2\"]
+user> (bufimg/save! dest-img \"test.png\")
+true
+user> (.close decoder)
+```
+  "
+  [fname & [{:keys [output-pixfmt output-height output-width]
+             :or {output-pixfmt "AV_PIX_FMT_BGR24"}}]]
   (let [file-fmt-ctx-ptr (dt-ffi/make-ptr :pointer 0)
         _ (errors/when-not-errorf
            (>= (avformat/avformat_open_input file-fmt-ctx-ptr fname nil nil) 0)
@@ -503,8 +574,43 @@ Input data shapes: %s"
                (>= (avcodec/avcodec_open2 dec-ctx codec nil) 0)
                "Failed to open decoder context")
             frame (avcodec/alloc-frame)
-            pkt (avcodec/alloc-packet)]
-        (VideoStreamDecoder. fmt-ctx dec-ctx pkt frame stream-index :reading))
+            pkt (avcodec/alloc-packet)
+            decoder-pixfmt-num (dec-ctx :pix-fmt)
+            output-pixfmt-num (long (if output-pixfmt
+                                      (av-pixfmt/pixfmt->value output-pixfmt)
+                                      decoder-pixfmt-num))
+            dec-width (long (dec-ctx :width))
+            dec-height (long (dec-ctx :height))
+            [^long output-width ^long output-height]
+            (cond
+              (and output-width output-height)
+              [output-width output-height]
+              output-width
+              [output-width (long (* dec-height (/ (long output-width) dec-width)))]
+              output-height
+              [(long (* dec-width (/ (long output-height) dec-height))) output-height]
+              :else
+              [dec-width dec-height])
+            [sws-ctx output-frame]
+            (when (or (not= output-pixfmt-num decoder-pixfmt-num)
+                      (not= dec-width output-width)
+                      (not= dec-height output-height))
+              [(swscale/sws_getContext dec-width dec-height decoder-pixfmt-num
+                                       output-width output-height output-pixfmt-num
+                                       swscale/SWS_BILINEAR nil nil nil)
+               (let [out-frame (avcodec/alloc-frame)]
+                 (.put out-frame :format output-pixfmt-num)
+                 (.put out-frame :width output-width)
+                 (.put out-frame :height output-height)
+                 (avcodec/av_frame_get_buffer out-frame 0)
+                 out-frame)])]
+        (VideoStreamDecoder. fmt-ctx dec-ctx pkt frame stream-index :reading
+                             sws-ctx output-frame
+                             ;;set the metadata on the decoder
+                             {:time-base (stream :time-base)
+                              :width output-width
+                              :height output-height
+                              :pix-fmt (av-pixfmt/value->pixfmt output-pixfmt-num)}))
       (catch Throwable e
         (avformat/avformat_close_input file-fmt-ctx-ptr)
         (throw e)))))

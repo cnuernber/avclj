@@ -42,4 +42,12 @@
                           :bit-rate 600000})]
       (dotimes [iter 600]
         (avclj/encode-frame! encoder (img-tensor [256 256 3] iter))))
-    (is (.exists (java.io.File. output-fname)))))
+    (is (.exists (java.io.File. output-fname)))
+    (let [frame-count
+          (with-open [decoder (avclj/make-video-decoder "test/data/test-video.mp4")]
+            (loop [idx 0
+                   frame (avclj/decode-frame! decoder)]
+              (if frame
+                (recur (inc idx) (avclj/decode-frame! decoder))
+                idx)))]
+      (is (= 600 frame-count)))))

@@ -102,7 +102,7 @@
                             :doc "Ensure frame is writable"}
    :avcodec_send_packet {:rettype :int32
                          :argtypes [['avctx :pointer] ;; AVCodecContext *avctx
-                                    ['avpkt :pointer]]  ;; const AVPacket *avpkt
+                                    ['avpkt :pointer?]]  ;; const AVPacket *avpkt
                          :doc "Supply raw packet data as input to a decoder.
 Internally, this call will copy relevant AVCodecContext fields, which can
 influence decoding per-packet, and apply them when the packet is actually
@@ -162,7 +162,11 @@ Returns: 0 on success, otherwise negative error code:
    :av_packet_unref {:rettype :int32
                      :check-error? true
                      :argtypes [['packet :pointer]]
-                     :doc "Unref a packet after from receive frame"}})
+                     :doc "Unref a packet after from receive frame"}
+   :av_frame_unref {:rettype :void
+                    :argtypes [['frame :pointer]] ;;AVFrame*
+                    :doc "Unreference all the buffers referenced by frame and reset the frame fields."
+                    }})
 
 
 (defonce ^:private lib (dt-ffi/library-singleton #'avcodec-fns))
