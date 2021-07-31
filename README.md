@@ -33,7 +33,7 @@ libavcodec58 - FFmpeg library with de/encoders for audio/video codecs - runtime 
 
 ## Graal Native
 
-I used the dtype-next activate-graal script to activate graal native:
+I used the dtype-next [activate-graal](https://github.com/cnuernber/dtype-next/blob/master/scripts/activate-graal) script to activate graal native:
 
 ```console
 (base) chrisn@chrisn-lt3:~/dev/cnuernber/dtype-next$ source scripts/activate-graal
@@ -43,9 +43,13 @@ OpenJDK Runtime Environment GraalVM CE 21.2.0 (build 11.0.12+6-jvmci-21.2-b08)
 OpenJDK 64-Bit Server VM GraalVM CE 21.2.0 (build 11.0.12+6-jvmci-21.2-b08, mixed mode, sharing)
 ```
 
-I then went into
-`native_test/avclj/gen_bindings.clj` and ran the code to generate the static classes necessary in
-order to bind into the libavcodec pathways.  You will need these system library packages:
+Then run the code to generate the graalvm-specific bindings:
+
+```console
+clj -M -e "(require 'avclj.gen-bindings)"
+```
+
+Next you will need these system library packages:
 
 * libavcodec-dev
 * libavformat-dev
