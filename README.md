@@ -57,7 +57,7 @@ order to bind into the libavcodec pathways.  You will need these system library 
 Then, after checking under generated_classes to be sure the class generation mechanism
 worked, simply run `scripts/compile`.
 
-* [gen_bindings.clj](native_test/avclj/main.clj)
+* [gen_bindings.clj](native_test/avclj/gen_bindings.clj)
 * [main.clj](native_test/avclj/main.clj)
 
 
