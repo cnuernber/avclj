@@ -52,7 +52,7 @@ int main(int c, char** v) {
   cout << "Decoding frames " << ioWidth << "x" << ioHeight << endl;
   //output format hardcoded to rgb24
   char* databuf = (char*)malloc(ioWidth * ioHeight * 3);
-  int num_frames = -1;
+  int num_frames = 0;
 
   while (decode_frame(thread, decoder, databuf) == 1)
     ++num_frames;
