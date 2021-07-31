@@ -5,8 +5,7 @@
             [tech.v3.datatype.ffi :as dt-ffi]
             [tech.v3.datatype :as dtype]
             [tech.v3.datatype.native-buffer :as native-buffer]
-            [tech.v3.datatype.errors :as errors]
-            [tech.v3.datatype.native-buffer :as nbuf])
+            [tech.v3.datatype.errors :as errors])
   (:import [java.util.concurrent ConcurrentHashMap]
            [tech.v3.datatype.ffi Pointer]))
 
@@ -42,11 +41,11 @@
 
 (defn encode-frame
   [encoder-hdl frame-data frame-data-len]
-  (let [nbuf (native-buffer/wrap-address
+  (let [native-buffer (native-buffer/wrap-address
               (.address ^Pointer frame-data)
               frame-data-len nil)
         encoder (hdl->encoder encoder-hdl)]
-    (avclj/encode-frame! encoder nbuf)
+    (avclj/encode-frame! encoder native-buffer)
     1))
 
 
@@ -67,10 +66,10 @@
   [fname io-width io-height]
   (let [fname (dt-ffi/c->string fname)
         ;;int pointers are translated into native buffers of int width
-        io-width (-> (nbuf/wrap-address (ptr->addr io-width) Integer/BYTES nil)
-                     (nbuf/set-native-datatype :int32))
-        io-height (-> (nbuf/wrap-address (ptr->addr io-height) Integer/BYTES nil)
-                      (nbuf/set-native-datatype :int32))
+        io-width (-> (native-buffer/wrap-address (ptr->addr io-width) Integer/BYTES nil)
+                     (native-buffer/set-native-datatype :int32))
+        io-height (-> (native-buffer/wrap-address (ptr->addr io-height) Integer/BYTES nil)
+                      (native-buffer/set-native-datatype :int32))
         decoder (avclj/make-video-decoder
                  fname
                  (merge {:output-pixfmt "AV_PIX_FMT_RGB24"}
