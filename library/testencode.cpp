@@ -42,5 +42,22 @@ int main(int c, char** v) {
     encode_frame(thread, encoder, image, n_bytes);
   }
   close_encoder(thread, encoder);
+
+  cout << "Encoded 300 frames.  Testing decode to RGB24" << endl;
+
+  //Request a aspect-preserving scaling operation to 100 pixels wide.
+  int ioWidth = 100;
+  int ioHeight = 0;
+  long decoder = make_decoder(thread, (void*)"libavclj.mp4", &ioWidth, &ioHeight);
+  cout << "Decoding frames " << ioWidth << "x" << ioHeight << endl;
+  //output format hardcoded to rgb24
+  char* databuf = (char*)malloc(ioWidth * ioHeight * 3);
+  int num_frames = -1;
+
+  while (decode_frame(thread, decoder, databuf) == 1)
+    ++num_frames;
+
+  cout << "Decoded " << num_frames << " frames" << endl;
+  close_decoder(thread, decoder);
   return 0;
 }

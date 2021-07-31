@@ -3,8 +3,10 @@
             [avclj.libavclj-init :as libinit]
             [avclj.av-codec-ids :as codec-ids]
             [tech.v3.datatype.ffi :as dt-ffi]
+            [tech.v3.datatype :as dtype]
             [tech.v3.datatype.native-buffer :as native-buffer]
-            [tech.v3.datatype.errors :as errors])
+            [tech.v3.datatype.errors :as errors]
+            [tech.v3.datatype.native-buffer :as nbuf])
   (:import [java.util.concurrent ConcurrentHashMap]
            [tech.v3.datatype.ffi Pointer]))
 
@@ -57,26 +59,47 @@
       1)
     0))
 
+(defn ptr->addr
+  ^long [^Pointer ptr]
+  (.address ptr))
 
-(comment
-  (do
-    (require '[tech.v3.datatype.ffi.graalvm :as graalvm])
-    (with-bindings {#'*compile-path* "library/classes"}
-      (graalvm/expose-clojure-functions
-       ;;name conflict - initialize is too general
-       {#'initialize-avclj {:rettype :int64}
-        #'is-avclj-initialized {:rettype :int64}
-        #'make-h264-encoder {:rettype :int64
-                             :argtypes [['height :int64]
-                                        ['width :int64]
-                                        ['out-fname :pointer]
-                                        ['input-pixfmt :pointer]]}
-        #'encode-frame {:rettype :int64
-                        :argtypes [['encoder :int64]
-                                   ['frame-data :pointer]
-                                   ['frame-data-len :int64]]}
-        #'close-encoder {:rettype :int64
-                         :argtypes [['encoder :int64]]}
-        }
-       'avljc.LibAVClj nil)))
-  )
+(defn make-decoder
+  [fname io-width io-height]
+  (let [fname (dt-ffi/c->string fname)
+        ;;int pointers are translated into native buffers of int width
+        io-width (-> (nbuf/wrap-address (ptr->addr io-width) Integer/BYTES nil)
+                     (nbuf/set-native-datatype :int32))
+        io-height (-> (nbuf/wrap-address (ptr->addr io-height) Integer/BYTES nil)
+                      (nbuf/set-native-datatype :int32))
+        decoder (avclj/make-video-decoder
+                 fname
+                 (merge {:output-pixfmt "AV_PIX_FMT_RGB24"}
+                        (when (> (io-width 0) 0)
+                          {:output-width (io-width 0)})
+                        (when (> (io-height 0) 0)
+                          {:output-height (io-height 0)})))
+        handle (long (System/identityHashCode decoder))
+        {:keys [width height]} (meta decoder)]
+    (.put libinit/encoders handle decoder)
+    (dtype/set-value! io-width 0 width)
+    (dtype/set-value! io-height 0 height)
+    handle))
+
+
+(defn decode-frame
+  [decoder-hdl buffer]
+  (if-let [decoder (.get libinit/encoders decoder-hdl)]
+    (if-let [frame-data (avclj/decode-frame! decoder)]
+      (let [{:keys [^long width ^long height]} (meta decoder)
+            bufsize (* width height 3)
+            buffer (native-buffer/wrap-address (ptr->addr buffer) bufsize nil)]
+        (dtype/copy! (frame-data 0) buffer)
+        1)
+      0)
+    -1))
+
+
+(defn close-decoder
+  [decoder-hdl]
+  ;;both encoders and decoders are auto-closeable
+  (close-encoder decoder-hdl))

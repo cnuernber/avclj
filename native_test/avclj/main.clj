@@ -5,49 +5,13 @@
             [avclj.avutil :as avutil]
             [avclj.swscale :as swscale]
             [avclj.av-codec-ids :as codec-ids]
-            [avclj.libavclj-init :as libavclj-init]
             ;;Must be included for graal runtime support
             [tech.v3.datatype.ffi.graalvm-runtime]
             [tech.v3.datatype.ffi :as dt-ffi]
-            [tech.v3.tensor :as dtt])
+            [tech.v3.tensor :as dtt]
+            [avclj.libavclj-init :as libavclj-init])
   (:gen-class))
 
-
-(comment
-  (do
-    (require '[tech.v3.datatype.ffi.graalvm :as graalvm])
-    (with-bindings {#'*compile-path* "generated_classes"}
-      (def avcodec-def (graalvm/define-library
-                         avcodec/avcodec-fns
-                         nil
-                         {:header-files ["<libavcodec/avcodec.h>"]
-                          :libraries ["avcodec" "x264"]
-                          :classname 'avclj.avcodec.Bindings}))
-
-      (def avformat-def (graalvm/define-library
-                          avformat/avformat-def
-                          nil
-                          {:header-files ["<libavformat/avformat.h>"]
-                           :libraries ["avformat"]
-                           :classname 'avclj.avformat.Bindings}))
-
-      (def avutil-def (graalvm/define-library
-                          avutil/avutil-def
-                          nil
-                          {:header-files ["<libavutil/avutil.h>"]
-                           :libraries ["avutil"]
-                           :classname 'avclj.avutil.Bindings}))
-
-      (def swscale-def (graalvm/define-library
-                         swscale/swscale-def
-                          nil
-                          {:header-files ["<libswscale/swscale.h>"]
-                           :libraries ["swscale"]
-                           :classname 'avclj.swscale.Bindings}))
-      )
-
-    )
-  )
 
 
 (defn img-tensor

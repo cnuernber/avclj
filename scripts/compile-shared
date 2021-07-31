@@ -16,6 +16,6 @@ $GRAALVM_HOME/bin/native-image \
     -J-Dclojure.spec.skip-macros=true \
     -J-Dclojure.compiler.direct-linking=true \
     -J-Dtech.v3.datatype.graal-native=true \
-    -jar ../target/avclj-uber.jar -cp classes \
+    -jar ../target/avclj-uber.jar -cp generated_classes \
     --shared -H:Name=libavclj
 popd

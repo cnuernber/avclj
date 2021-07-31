@@ -34,8 +34,8 @@ libavcodec58 - FFmpeg library with de/encoders for audio/video codecs - runtime 
 ## Graal Native
 
 I used the dtype-next activate-graal script to activate graal native.  I then went into
-native_test/avclj/main.clj and ran the code to generate the static classes necessary in
-order to bind into the libavcodec pathways.  You will need:
+`native_test/avclj/gen_bindings.clj` and ran the code to generate the static classes necessary in
+order to bind into the libavcodec pathways.  You will need these system library packages:
 
 * libavcodec-dev
 * libavformat-dev
@@ -47,27 +47,23 @@ order to bind into the libavcodec pathways.  You will need:
 Then, after checking under generated_classes to be sure the class generation mechanism
 worked, simply run `scripts/compile`.
 
-* [main.clj](https://github.com/cnuernber/avclj/blob/01685a4f0286bd7c39a0decf8e5a69d2a897d835/native_test/avclj/main.clj)
+* [gen_bindings.clj](native_test/avclj/main.clj)
+* [main.clj](native_test/avclj/main.clj)
 
 
 ### Graal Native Shared Library
 
 This is using an experimental dtype-next API to export a set of functions from the uberjar to C.
-1. Same setup as above -- you have to go into main.clj to generate the library bindings -- but in 
-addition go under 'native_test/avclj/libavclj.clj and run the code in the comment block that 
-shows how to export functions to a graalvm library.
+1. Same setup as above -- `gen_bindings` generates the bindings for the shared library.
 2.  Then run `scripts/compile-shared` to get a shared library written to the 'library' directory.  
 3.  Then in the 'library' directory, there is a script to compile a c++ executable against the shared library.  It encodes 300 frames or 
-so.  
+so - then decodes those frames.
 
-One key lesson learned here is that your library export file cannot have any 'def' or 
-'defonce' members; these will not get initialized.  Persistent state is recorded in a library init file 
-referenced from the main class of the uberjar so that the graal native system will initialized it.
-Your export file really needs to have only non-typehinted global functions referencing 
-state that your main function in your jarfile also references.
+One key lesson learned here is that your library export must only reference state that is also
+referenced from the main class of the uberjar and the exported `defn`'s cannot have typehints.
 
-* [library export file](https://github.com/cnuernber/avclj/blob/master/native_test/avclj/libavclj.clj)
-* [cpp encoder using referenced functions](https://github.com/cnuernber/avclj/blob/master/library/testencode.cpp)
+* [library export file](native_test/avclj/libavclj.clj)
+* [cpp encoder using referenced functions](library/testencode.cpp)
 
 
 ## Extra Information
