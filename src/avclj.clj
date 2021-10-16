@@ -513,9 +513,9 @@ Input data shapes: %s"
                     (raw-frame->buffers sws-frame))
                   (raw-frame->buffers frame))
                 (with-meta {:pts (frame :pts)
-                            :width (sws-frame :width)
-                            :height (sws-frame :height)
-                            :linesize (sws-frame :linesize)}))))
+                            :width ((or sws-frame frame) :width)
+                            :height ((or sws-frame frame) :height)
+                            :linesize ((or sws-frame frame) :linesize)}))))
            :finished
            nil))
         next-frame))))
