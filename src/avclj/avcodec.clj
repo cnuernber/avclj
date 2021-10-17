@@ -159,8 +159,7 @@ Returns: 0 on success, otherwise negative error code:
                             :argtypes [['ctx :pointer]
                                        ['packet :pointer]]
                             :doc "Get an encoded packet.  Packet must be unref-ed"}
-   :av_packet_unref {:rettype :int32
-                     :check-error? true
+   :av_packet_unref {:rettype :void
                      :argtypes [['packet :pointer]]
                      :doc "Unref a packet after from receive frame"}
    :av_frame_unref {:rettype :void
