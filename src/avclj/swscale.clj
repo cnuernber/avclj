@@ -2,27 +2,29 @@
   (:require [tech.v3.datatype.ffi :as dt-ffi]
             [avclj.avcodec :as avcodec]))
 
-(def swscale-def
-  {:swscale_version {:rettype :int32
-                     :doc "Get library version"}
-   :swscale_license {:rettype :string
-                     :doc "Get library license"}
-   :swscale_configuration {:rettype :string
-                           :doc "Get libswscale build time config"}
-   :sws_getContext
-   {:rettype :pointer
-    :argtypes [['srcW :int32]
-               ['srcH :int32]
-               ['srcFormat :int32]
-               ['dstW :int32]
-               ['dstH :int32]
-               ['dstFormat :int32]
-               ['flags :int32]
-               ['srcFilter :pointer?]
-               ['dstFilter :pointer?]
-               ['param :pointer?]]
-    :doc
-    "/**
+
+(dt-ffi/define-library!
+  lib
+  '{:swscale_version {:rettype :int32
+                      :doc "Get library version"}
+    :swscale_license {:rettype :string
+                      :doc "Get library license"}
+    :swscale_configuration {:rettype :string
+                            :doc "Get libswscale build time config"}
+    :sws_getContext
+    {:rettype :pointer
+     :argtypes [[srcW :int32]
+                [srcH :int32]
+                [srcFormat :int32]
+                [dstW :int32]
+                [dstH :int32]
+                [dstFormat :int32]
+                [flags :int32]
+                [srcFilter :pointer?]
+                [dstFilter :pointer?]
+                [param :pointer?]]
+     :doc
+     "/**
  * Allocate and return an SwsContext. You need it to perform
  * scaling/conversion operations using sws_scale().
  *
@@ -43,17 +45,17 @@
  * @note this function is to be removed after a saner alternative is
  *       written
  */"}
-   :sws_scale
-   {:rettype :int32
-    :argtypes [['ctx :pointer]
-               ['srcSlice :pointer]
-               ['srcStride :pointer]
-               ['srcSliceY :int32]
-               ['srcSliceH :int32]
-               ['dst :pointer]
-               ['dstStride :pointer]]
-    :check-error? true
-    :doc "/**
+    :sws_scale
+    {:rettype :int32
+     :argtypes [[ctx :pointer]
+                [srcSlice :pointer]
+                [srcStride :pointer]
+                [srcSliceY :int32]
+                [srcSliceH :int32]
+                [dst :pointer]
+                [dstStride :pointer]]
+     :check-error? true
+     :doc "/**
  * Scale the image slice in srcSlice and put the resulting scaled
  * slice in the image in dst. A slice is a sequence of consecutive
  * rows in an image.
@@ -79,12 +81,12 @@
  *                  the destination image
  * @return          the height of the output slice
  */"}
-   :sws_freeContext {:rettype :void
-                     :argtypes [['swsContext :pointer]]}})
+    :sws_freeContext {:rettype :void
+                      :argtypes [[swsContext :pointer]]}}
+  nil
+  avcodec/check-error)
 
 
-(defonce lib (dt-ffi/library-singleton #'swscale-def))
-(dt-ffi/library-singleton-reset! lib)
 (defn set-library-instance!
   [lib-instance]
   (dt-ffi/library-singleton-set-instance! lib lib-instance))
@@ -95,13 +97,6 @@
   (if (dt-ffi/library-singleton-library lib)
     :already-initialized
     (dt-ffi/library-singleton-set! lib "swscale")))
-
-(defn get-sws-fn
-  [fn-name]
-  (dt-ffi/library-singleton-find-fn lib fn-name))
-
-(dt-ffi/define-library-functions
-  avclj.swscale/swscale-def get-sws-fn avcodec/check-error)
 
 
 (def constants

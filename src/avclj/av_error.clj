@@ -2,7 +2,18 @@
   (:require [clojure.set :as set]))
 
 
-(def error->value-map
+(defmacro define-error-constants
+  [error-constants]
+  `(do
+     (def error->value-map ~error-constants)
+     ~@(->> error-constants
+            (map (fn [[k v]]
+                   (let [sym (with-meta (symbol k)
+                               {:tag ''long})]
+                     `(def ~sym ~v)))))))
+
+
+(define-error-constants
   {
    "AVERROR_BSF_NOT_FOUND" -1179861752
    "AVERROR_BUG" -558323010
@@ -50,16 +61,3 @@
   (if-let [retval (get error->value-map (long err-name))]
     retval
     (format "Unrecognized AV error: %s" err-name)))
-
-
-(defmacro define-error-constants
-  []
-  `(do
-     ~@(->> error->value-map
-            (map (fn [[k v]]
-                   (let [sym (with-meta (symbol k)
-                               {:tag ''long})]
-                     `(def ~sym ~v)))))))
-
-
-(define-error-constants)

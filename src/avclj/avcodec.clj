@@ -13,97 +13,111 @@
   (:import [tech.v3.datatype.ffi Pointer]
            [java.util Map]))
 
+(declare str-error)
 
-(def avcodec-fns
-  {:avcodec_version {:rettype :int32
-                     :doc "Return the version of the avcodec library"}
-   :avcodec_configuration {:rettype :string
-                           :doc "Return the build configuration of the avcodec lib"}
-   :avcodec_license {:rettype :string
-                     :doc "Return the license of the avcodec lib"}
-   :av_codec_iterate {:rettype :pointer
-                      :argtypes [['opaque :pointer]]
-                      :doc "Iterate through av code objects.  Returns an AVCodec*"}
-   :av_strerror {:rettype :int32
-                 :argtypes [['errnum :int32]
-                            ['errbuf :pointer]
-                            ['errbuf-size :size-t]]
-                 :doc "Get a string description for an error."}
-   :av_codec_is_encoder {:rettype :int32
-                         :argtypes [['codec :pointer]]
-                         :doc "Return nonzero if encoder"}
-   :av_codec_is_decoder {:rettype :int32
-                         :argtypes [['codec :pointer]]
-                         :doc "Return nonzero if encoder"}
-   :avcodec_find_encoder_by_name {:rettype :pointer
-                                  :argtypes [['name :string]]
-                                  :doc "Find an encoder by name"}
-   :avcodec_find_encoder {:rettype :pointer
-                          :argtypes [['id :int32]]
-                          :doc "Find an encoder codec id"}
-   :avcodec_find_decoder_by_name {:rettype :pointer
-                                  :argtypes [['name :string]]
-                                  :doc "Find a decoder by name"}
-   :avcodec_find_decoder {:rettype :pointer
-                          :argtypes [['id :int32]]
-                          :doc "Find a decoder codec id"}
-   :avcodec_alloc_context3 {:rettype :pointer
-                            :argtypes [['codec :pointer?]]
-                            :doc "Allocate an avcodec context"}
-   :avcodec_free_context {:rettype :void
-                          :argtypes [['codec-ptr-ptr :pointer]]
-                          :doc "Free the context.  Expects a ptr-ptr to be passed in"}
-   :avcodec_parameters_from_context {:rettype :int32
-                                     :argtypes [['par :pointer]
-                                                ['codec :pointer]]
-                                     :doc "Initialize parameter struct from the codec"}
-   :avcodec_parameters_to_context {:rettype :int32
-                                   :argtypes [['codec :pointer]
-                                              ['par :pointer]]
-                                   :doc "Initialize codec params from param struct"}
-   :avcodec_open2 {:rettype :int32
-                   :argtypes [['c :pointer]
-                              ['codec :pointer]
-                              ['opts :pointer?]]
-                   :check-error? true
-                   :doc "Open the codec with the context"}
-   :av_opt_set {:rettype :int32
-                :argtypes [['priv-data :pointer]
-                           ['key :string]
-                           ['value :string]
-                           ['flags :int32]]
-                :doc "Set an option on an object such as the codec context"
-                :check-error? true}
-   :av_packet_alloc {:rettype :pointer
-                     :doc "allocate an av packet"}
-   :av_packet_free {:rettype :void
-                    :argtypes [['packet :pointer]] ;;AVPacket**
-                    :doc "free an av packet"}
-   :av_packet_rescale_ts {:rettype :void
-                          :argtypes [['pkt :pointer]
-                                     ['src_num :int32]
-                                     ['src_den :int32]
-                                     ['dst_num :int32]
-                                     ['dst_den :int32]]
-                          :doc "rescale a packet's time fields"}
-   :av_frame_alloc {:rettype :pointer
-                    :doc "allocate an av frame"}
-   :av_frame_free {:rettype :void
-                   :argtypes [['frame :pointer]]
-                   :doc "free an av frame"}
-   :av_frame_get_buffer {:rettype :int32
-                         :check-error? true
-                         :argtypes [['frame :pointer]
-                                    ['align :int32]]
-                         :doc "Allocate the frame's data buffer"}
-   :av_frame_make_writable {:rettype :int32
-                            :check-error? true
-                            :argtypes [['frame :pointer]]
-                            :doc "Ensure frame is writable"}
-   :avcodec_send_packet {:rettype :int32
-                         :argtypes [['avctx :pointer] ;; AVCodecContext *avctx
-                                    ['avpkt :pointer?]]  ;; const AVPacket *avpkt
-                         :doc "Supply raw packet data as input to a decoder.
+(defmacro check-error
+  [_fn-def & body]
+  `(let [error-val# (long (do ~@body))]
+     (errors/when-not-errorf
+      (>= error-val# 0)
+      "Exception calling avcodec: (%d) - \"%s\""
+      error-val# (if-let [err-name#  (get av-error/value->error-map error-val#)]
+                   err-name#
+                   (str-error error-val#)))
+     error-val#))
+
+
+(dt-ffi/define-library!
+  lib
+  '{:avcodec_version {:rettype :int32
+                      :doc "Return the version of the avcodec library"}
+    :avcodec_configuration {:rettype :string
+                            :doc "Return the build configuration of the avcodec lib"}
+    :avcodec_license {:rettype :string
+                      :doc "Return the license of the avcodec lib"}
+    :av_codec_iterate {:rettype :pointer
+                       :argtypes [[opaque :pointer]]
+                       :doc "Iterate through av code objects.  Returns an AVCodec*"}
+    :av_strerror {:rettype :int32
+                  :argtypes [[errnum :int32]
+                             [errbuf :pointer]
+                             [errbuf-size :size-t]]
+                  :doc "Get a string description for an error."}
+    :av_codec_is_encoder {:rettype :int32
+                          :argtypes [[codec :pointer]]
+                          :doc "Return nonzero if encoder"}
+    :av_codec_is_decoder {:rettype :int32
+                          :argtypes [[codec :pointer]]
+                          :doc "Return nonzero if encoder"}
+    :avcodec_find_encoder_by_name {:rettype :pointer
+                                   :argtypes [[name :string]]
+                                   :doc "Find an encoder by name"}
+    :avcodec_find_encoder {:rettype :pointer
+                           :argtypes [[id :int32]]
+                           :doc "Find an encoder codec id"}
+    :avcodec_find_decoder_by_name {:rettype :pointer
+                                   :argtypes [[name :string]]
+                                   :doc "Find a decoder by name"}
+    :avcodec_find_decoder {:rettype :pointer
+                           :argtypes [[id :int32]]
+                           :doc "Find a decoder codec id"}
+    :avcodec_alloc_context3 {:rettype :pointer
+                             :argtypes [[codec :pointer?]]
+                             :doc "Allocate an avcodec context"}
+    :avcodec_free_context {:rettype :void
+                           :argtypes [[codec-ptr-ptr :pointer]]
+                           :doc "Free the context.  Expects a ptr-ptr to be passed in"}
+    :avcodec_parameters_from_context {:rettype :int32
+                                      :argtypes [[par :pointer]
+                                                 [codec :pointer]]
+                                      :doc "Initialize parameter struct from the codec"}
+    :avcodec_parameters_to_context {:rettype :int32
+                                    :argtypes [[codec :pointer]
+                                               [par :pointer]]
+                                    :doc "Initialize codec params from param struct"}
+    :avcodec_open2 {:rettype :int32
+                    :argtypes [[c :pointer]
+                               [codec :pointer]
+                               [opts :pointer?]]
+                    :check-error? true
+                    :doc "Open the codec with the context"}
+    :av_opt_set {:rettype :int32
+                 :argtypes [[priv-data :pointer]
+                            [key :string]
+                            [value :string]
+                            [flags :int32]]
+                 :doc "Set an option on an object such as the codec context"
+                 :check-error? true}
+    :av_packet_alloc {:rettype :pointer
+                      :doc "allocate an av packet"}
+    :av_packet_free {:rettype :void
+                     :argtypes [[packet :pointer]] ;;AVPacket**
+                     :doc "free an av packet"}
+    :av_packet_rescale_ts {:rettype :void
+                           :argtypes [[pkt :pointer]
+                                      [src_num :int32]
+                                      [src_den :int32]
+                                      [dst_num :int32]
+                                      [dst_den :int32]]
+                           :doc "rescale a packet's time fields"}
+    :av_frame_alloc {:rettype :pointer
+                     :doc "allocate an av frame"}
+    :av_frame_free {:rettype :void
+                    :argtypes [[frame :pointer]]
+                    :doc "free an av frame"}
+    :av_frame_get_buffer {:rettype :int32
+                          :check-error? true
+                          :argtypes [[frame :pointer]
+                                     [align :int32]]
+                          :doc "Allocate the frame's data buffer"}
+    :av_frame_make_writable {:rettype :int32
+                             :check-error? true
+                             :argtypes [[frame :pointer]]
+                             :doc "Ensure frame is writable"}
+    :avcodec_send_packet {:rettype :int32
+                          :argtypes [[avctx :pointer] ;; AVCodecContext *avctx
+                                     [avpkt :pointer?]]  ;; const AVPacket *avpkt
+                          :doc "Supply raw packet data as input to a decoder.
 Internally, this call will copy relevant AVCodecContext fields, which can
 influence decoding per-packet, and apply them when the packet is actually
 decoded. (For example AVCodecContext.skip_frame, which might direct the
@@ -127,10 +141,10 @@ Returns: 0 on success, otherwise negative error code:
      AVERROR(EINVAL):   codec not opened, it is an encoder, or requires flush
      AVERROR(ENOMEM):   failed to add packet to internal queue, or similar
      other errors: legitimate decoding errors"}
-   :avcodec_receive_frame {:rettype :int32
-                           :argtypes [['avctx :pointer]
-                                      ['frame :pointer]]
-                           :doc "Return decoded output data from a decoder.
+    :avcodec_receive_frame {:rettype :int32
+                            :argtypes [[avctx :pointer]
+                                       [frame :pointer]]
+                            :doc "Return decoded output data from a decoder.
 
 @param avctx codec context
 @param frame This will be set to a reference-counted video or audio
@@ -149,56 +163,30 @@ Returns: 0 on success, otherwise negative error code:
                               with respect to first decoded frame. Applicable
                               when flag AV_CODEC_FLAG_DROPCHANGED is set.
      other negative values: legitimate decoding errors"}
-   :avcodec_send_frame {:rettype :int32
-                        :check-error? true
-                        :argtypes [['ctx :pointer]
-                                   ['frame :pointer?]]
-                        :doc "Send a frame to encode.  A nil frame flushes the buffer"}
+    :avcodec_send_frame {:rettype :int32
+                         :check-error? true
+                         :argtypes [[ctx :pointer]
+                                    [frame :pointer?]]
+                         :doc "Send a frame to encode.  A nil frame flushes the buffer"}
    ;;This returns errors during normal course of operation
-   :avcodec_receive_packet {:rettype :int32
-                            :argtypes [['ctx :pointer]
-                                       ['packet :pointer]]
-                            :doc "Get an encoded packet.  Packet must be unref-ed"}
-   :av_packet_unref {:rettype :void
-                     :argtypes [['packet :pointer]]
-                     :doc "Unref a packet after from receive frame"}
-   :av_frame_unref {:rettype :void
-                    :argtypes [['frame :pointer]] ;;AVFrame*
-                    :doc "Unreference all the buffers referenced by frame and reset the frame fields."
-                    }})
+    :avcodec_receive_packet {:rettype :int32
+                             :argtypes [[ctx :pointer]
+                                        [packet :pointer]]
+                             :doc "Get an encoded packet.  Packet must be unref-ed"}
+    :av_packet_unref {:rettype :void
+                      :argtypes [[packet :pointer]]
+                      :doc "Unref a packet after from receive frame"}
+    :av_frame_unref {:rettype :void
+                     :argtypes [[frame :pointer]] ;;AVFrame*
+                     :doc "Unreference all the buffers referenced by frame and reset the frame fields."}}
+  nil
+  check-error)
 
 
-(defonce ^:private lib (dt-ffi/library-singleton #'avcodec-fns))
+
 (defn set-library-instance!
   [lib-instance]
   (dt-ffi/library-singleton-set-instance! lib lib-instance))
-
-;;Safe to call on uninitialized library.  If the library is initialized, however,
-;;a new library instance is created from the latest avcodec-fns
-(dt-ffi/library-singleton-reset! lib)
-
-
-(defn- find-avcodec-fn
-  [fn-kwd]
-  (dt-ffi/library-singleton-find-fn lib fn-kwd))
-
-
-(declare str-error)
-
-
-(defmacro check-error
-  [fn-def & body]
-  `(let [error-val# (long (do ~@body))]
-     (errors/when-not-errorf
-      (>= error-val# 0)
-      "Exception calling avcodec: (%d) - \"%s\""
-      error-val# (if-let [err-name#  (get av-error/value->error-map error-val#)]
-                   err-name#
-                   (str-error error-val#)))
-     error-val#))
-
-
-(dt-ffi/define-library-functions avclj.avcodec/avcodec-fns find-avcodec-fn check-error)
 
 
 (defn str-error

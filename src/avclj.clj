@@ -236,7 +236,7 @@ the next decode-frame! call"))
                   ^:unsynchronized-mutable n-frames
                   ^Map sws-ctx ^Map avfmt-ctx ^Map stream]
   PVideoEncoder
-  (encode-frame! [this frame-data]
+  (encode-frame! [_this frame-data]
     (if frame-data
       (let [_ (avcodec/av_frame_make_writable input-frame)
             ftens (raw-frame->buffers input-frame)
