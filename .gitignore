@@ -11,3 +11,5 @@ pom.xml
 avclj.main
 library
 *.asc
+.clj-kondo
+.lsp

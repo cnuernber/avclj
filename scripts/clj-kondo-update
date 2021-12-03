@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -e
+
+rm -rf .clj-kondo/.cache
+clj-kondo --lint "$(clj -Spath)" --dependencies --parallel --copy-configs

@@ -63,8 +63,7 @@ nil
             [tech.v3.resource :as resource]
             [clojure.tools.logging :as log]
             [clojure.java.io :as clj-io])
-  (:import [java.io OutputStream]
-           [java.util Map]
+  (:import [java.util Map]
            [tech.v3.datatype.ffi Pointer]
            [clojure.lang IMeta]))
 

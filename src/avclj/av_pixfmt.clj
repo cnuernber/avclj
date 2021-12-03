@@ -1,10 +1,21 @@
 (ns avclj.av-pixfmt
-  (:require [tech.v3.datatype.errors :as errors]
-            [clojure.set :as set]))
+  (:require [tech.v3.datatype.errors :as errors]))
 
 
-(def pixfmt-name-value-map
-  { "AV_PIX_FMT_NONE" -1
+
+(defmacro define-pixfmt-constants
+  [pixfmts]
+  `(do
+     (def pixfmt-name-value-map ~pixfmts)
+     ~@(->> pixfmts
+            (map (fn [[k v]]
+                   (let [sym (with-meta (symbol k)
+                               {:tag ''long})]
+                     `(def ~sym ~v)))))))
+
+
+(define-pixfmt-constants
+ { "AV_PIX_FMT_NONE" -1
    "AV_PIX_FMT_YUV420P" 0
    "AV_PIX_FMT_YUYV422" 1
    "AV_PIX_FMT_RGB24" 2
@@ -300,16 +311,3 @@
   (if-let [retval (get pixfmt-value-name-multi-map pixval)]
     retval
     [(format "Unrecognized pixfmt %s" pixval)]))
-
-
-(defmacro define-pixfmt-constants
-  []
-  `(do
-     ~@(->> pixfmt-name-value-map
-            (map (fn [[k v]]
-                   (let [sym (with-meta (symbol k)
-                               {:tag ''long})]
-                     `(def ~sym ~v)))))))
-
-
-(define-pixfmt-constants)
