@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -e
+
+scripts/clj-kondo
+clj -M:test
+clj -X:depstar
+clj -X:deploy
