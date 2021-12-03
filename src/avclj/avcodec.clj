@@ -3,13 +3,10 @@
   (:require [avclj.av-context :as av-context]
             [avclj.av-error :as av-error]
             [avclj.av-pixfmt :as av-pixfmt]
-            [tech.v3.datatype :as dtype]
             [tech.v3.datatype.ffi :as dt-ffi]
-            [tech.v3.datatype.ffi.size-t :as ffi-size-t]
             [tech.v3.datatype.native-buffer :as native-buffer]
             [tech.v3.datatype.errors :as errors]
-            [tech.v3.resource :as resource]
-            [clojure.tools.logging :as log])
+            [tech.v3.resource :as resource])
   (:import [tech.v3.datatype.ffi Pointer]
            [java.util Map]))
 

@@ -1,6 +1,5 @@
 (ns avclj.avutil
   (:require [tech.v3.datatype.ffi :as dt-ffi]
-            [avclj.avcodec :refer [check-error]]
             [tech.v3.datatype.errors :as errors]
             [tech.v3.resource :as resource])
   (:import [tech.v3.datatype.ffi Pointer]))

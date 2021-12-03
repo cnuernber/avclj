@@ -1,13 +1,10 @@
 (ns avclj.av-context
   "Definition of all the struct types used in the av* system"
-  (:require [tech.v3.datatype.ffi :as dt-ffi]
-            [tech.v3.datatype.ffi.size-t :as ffi-size-t]
+  (:require [tech.v3.datatype.ffi.size-t :as ffi-size-t]
             [tech.v3.datatype.ffi.clang :as ffi-clang]
             [tech.v3.datatype.struct :as dt-struct]
-            [tech.v3.datatype.errors :as errors]
             [camel-snake-kebab.core :as csk]
-            [clojure.string :as s])
-  (:import [java.util Map]))
+            [clojure.string :as s]))
 
 (def ^{:doc "Record layout produced using clang -fdump-record-layout option during compilation"}
   context-layout

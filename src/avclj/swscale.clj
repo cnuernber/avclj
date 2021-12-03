@@ -1,6 +1,6 @@
 (ns avclj.swscale
   (:require [tech.v3.datatype.ffi :as dt-ffi]
-            [avclj.avcodec :as avcodec]))
+            [avclj.avcodec]))
 
 
 (dt-ffi/define-library!
@@ -84,7 +84,7 @@
     :sws_freeContext {:rettype :void
                       :argtypes [[swsContext :pointer]]}}
   nil
-  avcodec/check-error)
+  avclj.avcodec/check-error)
 
 
 (defn set-library-instance!
@@ -99,7 +99,17 @@
     (dt-ffi/library-singleton-set! lib "swscale")))
 
 
-(def constants
+(defmacro define-constants
+  [constant-data]
+  `(do
+     (def constants ~constant-data)
+     ~@(->> constant-data
+            (map (fn [[k v]]
+                   (let [sym (with-meta (symbol k)
+                               {:tag ''long})]
+                     `(def ~sym ~v)))))))
+
+(define-constants
   {"SWS_FAST_BILINEAR"     1
    "SWS_BILINEAR"          2
    "SWS_BICUBIC"           4
@@ -139,15 +149,3 @@
    "SWS_CS_SMPTE240M"      7
    "SWS_CS_DEFAULT"        5
    "SWS_CS_BT2020"         9})
-
-
-(defmacro define-constants
-  []
-  `(do
-     ~@(->> constants
-            (map (fn [[k v]]
-                   (let [sym (with-meta (symbol k)
-                               {:tag ''long})]
-                     `(def ~sym ~v)))))))
-
-(define-constants)

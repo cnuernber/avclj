@@ -1,0 +1,9 @@
+{:hooks {:macroexpand {avclj.av-error-defs/define-error-constants
+                       avclj.av-error-defs/define-error-constants
+                       avclj.av-pixfmt-data/define-pixfmt-constants
+                       avclj.av-pixfmt-data/define-pixfmt-constants
+                       avclj.swscale/define-constants
+                       avclj.swscale/define-constants
+                       avclj.av-codec-id-defs/define-codec-constants
+                       avclj.av-codec-id-defs/define-codec-constants
+                       }}}

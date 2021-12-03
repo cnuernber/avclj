@@ -453,9 +453,9 @@ Input data shapes: %s"
                              ^Map sws-frame
                              metadata]
   IMeta
-  (meta [this] metadata)
+  (meta [_this] metadata)
   java.lang.AutoCloseable
-  (close [this]
+  (close [_this]
     (avcodec/free-packet pkt)
     (avcodec/free-frame frame)
     (avcodec/free-context decoder-ctx)
@@ -469,7 +469,7 @@ Input data shapes: %s"
        (avformat/avformat_close_input ctx-ptr))))
 
   PVideoDecoder
-  (decode-frame! [this]
+  (decode-frame! [_this]
     (when (or (identical? :decoding frame-stage)
               (identical? :finalizing frame-stage))
       (avcodec/av_frame_unref frame))
@@ -487,9 +487,8 @@ Input data shapes: %s"
                  nil)
                (do
                  (when (== (long (pkt :stream-index)) stream-index)
-                   (do
-                     (set! frame-stage :decoding)
-                     (avcodec/avcodec_send_packet decoder-ctx pkt)))
+                   (set! frame-stage :decoding)
+                   (avcodec/avcodec_send_packet decoder-ctx pkt))
                  (avcodec/av_packet_unref pkt)
                  nil)))
            (:decoding :finalizing)

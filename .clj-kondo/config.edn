@@ -1,0 +1,2 @@
+{:config-paths ["../resources/clj-kondo.exports/com.cnuernber/avclj/"
+                "cnuernber/dtype-next"]}

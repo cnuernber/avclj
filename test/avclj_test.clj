@@ -10,7 +10,7 @@
 (defn img-tensor
   [shape ^long offset]
   (dtt/compute-tensor shape
-                      (fn [^long y ^long x ^long c]
+                      (fn [^long y ^long x ^long _c]
                         (let [ymod (-> (quot (+ y offset) 32)
                                        (mod 2))
                               xmod (-> (quot (+ x offset) 32)
@@ -24,7 +24,7 @@
 
 (defn save-tensor
   [tens fname]
-  (let [[h w c] (dtype/shape tens)
+  (let [[h w _c] (dtype/shape tens)
         bufimg (bufimg/new-image h w :byte-bgr)]
     (-> (dtype/copy! tens bufimg)
         (bufimg/save! fname))))

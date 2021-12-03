@@ -1,4 +1,4 @@
-{:paths ["src" "generated_classes" "native_test"]
+{:paths ["src" "generated_classes" "native_test" "resources"]
  :deps {cnuernber/dtype-next           {:mvn/version "8.044"}
         net.java.dev.jna/jna           {:mvn/version "5.7.0"}}
  :aliases

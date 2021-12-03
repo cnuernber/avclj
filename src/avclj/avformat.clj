@@ -1,30 +1,35 @@
 (ns avclj.avformat
   (:require [tech.v3.datatype.ffi :as dt-ffi]
-            [avclj.avcodec :refer [check-error]]
             [avclj.av-context :as av-context]
+            [avclj.avcodec]
             [tech.v3.resource :as resource])
   (:import [tech.v3.datatype.ffi Pointer]
            [java.util Map]))
 
 
 (def avformat-def
-  {:avformat_version {:rettype :int32
+  )
+
+
+(dt-ffi/define-library!
+  avformat
+  '{:avformat_version {:rettype :int32
                       :doc "version of the library"}
    :avformat_configuration {:rettype :string
                             :doc "Build configuration of the library"}
    :avformat_license {:rettype :string
                       :doc "License of the library"}
    :avformat_open_input {:rettype :int32
-                         :argtypes [['ps :pointer]  ;;AVFormatContext**
-                                    ['url :string]
-                                    ['av-input-format :pointer?] ;;AVInputFormat*
-                                    ['options :pointer?]]         ;;AVDictionary**
+                         :argtypes [[ps :pointer]  ;;AVFormatContext**
+                                    [url :string]
+                                    [av-input-format :pointer?] ;;AVInputFormat*
+                                    [options :pointer?]]         ;;AVDictionary**
                          :doc "Open an input stream and read the header. The codecs are not opened.
 The stream must be closed with avformat_close_input.
 See https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/avformat.h#L1966"}
    :avformat_find_stream_info {:rettype :int32
-                               :argtypes [['ic :pointer]     ;;AVFormatContext *
-                                          ['options :pointer?]] ;;AVDictionary **
+                               :argtypes [[ic :pointer]     ;;AVFormatContext *
+                                          [options :pointer?]] ;;AVDictionary **
                                :doc "Read packets of a media file to get stream information. This
 is useful for file formats with no headers such as MPEG. This
 function also computes the real framerate in case of MPEG-2 repeat
@@ -33,12 +38,12 @@ The logical file position is not changed by this function;
 examined packets may be buffered for later processing.
 See https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/avformat.h#L1988"}
    :av_find_best_stream {:rettype :int32
-                         :argtypes [['ic :pointer] ;;AVFormatContext *,
-                                    ['type :int32] ;;enum AVMediaType ,
-                                    ['wanted_stream_nb :int32]
-                                    ['related_stream :int32] ;;int ,
-                                    ['decoder_ret :pointer] ;;const AVCodec **decoder_ret,
-                                    ['flags :int32]] ;;unused
+                         :argtypes [[ic :pointer] ;;AVFormatContext *,
+                                    [type :int32] ;;enum AVMediaType ,
+                                    [wanted_stream_nb :int32]
+                                    [related_stream :int32] ;;int ,
+                                    [decoder_ret :pointer] ;;const AVCodec **decoder_ret,
+                                    [flags :int32]] ;;unused
                          :doc "Find the \"best\" stream in the file.
 The best stream is determined according to various heuristics as the most
 likely to be what the user expects.
@@ -53,8 +58,8 @@ AVERROR_DECODER_NOT_FOUND if streams were found but no decoder
 
 See https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/avformat.h#L2025"}
    :av_read_frame {:rettype :int32
-                   :argtypes [['s :pointer] ;;AVFormatContext *s
-                              ['pkt :pointer]] ;;AVPacket *
+                   :argtypes [[s :pointer] ;;AVFormatContext *s
+                              [pkt :pointer]] ;;AVPacket *
                    :doc "Return the next frame of a stream.
 This function returns what is stored in the file, and does not validate
 that what is there are valid frames for the decoder. It will split what is
@@ -78,66 +83,66 @@ decompress the payload.
 return 0 if OK, < 0 on error or end of file. On error, pkt will be blank
 (as if it came from av_packet_alloc())."}
    :avformat_close_input {:rettype :void
-                          :argtypes [['s :pointer]] ;;AVFormatContext **
+                          :argtypes [[s :pointer]] ;;AVFormatContext **
                           :doc "Close an input stream.
 See https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/avformat.h#L2160"}
 
    :avformat_alloc_output_context2 {:rettype :int32
-                                    :argtypes [['ctx :pointer]
-                                               ['oformat :pointer?]
+                                    :argtypes [[ctx :pointer]
+                                               [oformat :pointer?]
                                                ;;one or the other of format_name
                                                ;;or file_name may be used.
-                                               ['format_name :pointer?]
-                                               ['file_name :pointer?]]
+                                               [format_name :pointer?]
+                                               [file_name :pointer?]]
                                     :check-error? true
                                     :doc "Open an output context"}
    :avformat_free_context {:rettype :void
-                           :argtypes [['ctx :pointer]]
+                           :argtypes [[ctx :pointer]]
                            :doc "Free an avformat context"}
    :avformat_new_stream {:rettype :pointer
-                         :argtypes [['avfmt-ctx :pointer]
-                                    ['codec :pointer]]
+                         :argtypes [[avfmt-ctx :pointer]
+                                    [codec :pointer]]
                          :doc "Create a new stream"}
    :av_write_frame {:rettype :int32
-                    :argtypes [['avfmt-ctx :pointer]
-                               ['packet :pointer]]
+                    :argtypes [[avfmt-ctx :pointer]
+                               [packet :pointer]]
                     :check-error? true
                     :doc "Write a packet to the output frame.  Does not own packet"}
    :av_interleaved_write_frame {:rettype :int32
-                                :argtypes [['avfmt-ctx :pointer]
-                                           ['packet :pointer]]
+                                :argtypes [[avfmt-ctx :pointer]
+                                           [packet :pointer]]
                                 :check-error? true
                                 :doc "Write a packet to the output frame.  Owns packet"}
    :avformat_write_header {:rettype :int32
-                           :argtypes [['avfmt-ctx :pointer]
-                                      ['options-dict-pptr :pointer?]]
+                           :argtypes [[avfmt-ctx :pointer]
+                                      [options-dict-pptr :pointer?]]
                            :check-errors? true
                            :doc "Write the file header"}
    :av_write_trailer {:rettype :int32
-                      :argtypes [['avfmt-ctx :pointer]]
+                      :argtypes [[avfmt-ctx :pointer]]
                       :check-errors? true
                       :doc "Write the file trailer"}
    :avio_open2 {:rettype :int32
-                :argtypes [['ctx :pointer]
-                           ['url :string]
-                           ['flags :int32]
-                           ['int_cp :pointer?]
-                           ['options :pointer?]]
+                :argtypes [[ctx :pointer]
+                           [url :string]
+                           [flags :int32]
+                           [int_cp :pointer?]
+                           [options :pointer?]]
                 :check-errors? true
                 :doc "Open an io pathway"}
    :avio_close {:rettype :int32
-                :argtypes [['s :pointer]]
+                :argtypes [[s :pointer]]
                 :check-errors? true
                 :doc "Close the avio context"}
    :avio_closep {:rettype :int32
-                 :argtypes [['s-ptr :pointer]]
+                 :argtypes [[s-ptr :pointer]]
                  :check-errors? true
                  :doc "Close a pointer to a pointer to the avio context"}
-   })
+   }
+  nil
+  avclj.avcodec/check-error)
 
 
-(defonce avformat (dt-ffi/library-singleton #'avformat-def))
-(dt-ffi/library-singleton-reset! avformat)
 (defn set-library-instance!
   [lib-instance]
   (dt-ffi/library-singleton-set-instance! avformat lib-instance))
@@ -151,11 +156,6 @@ See https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/avformat.h#L2160"}
 (def ^{:tag 'long} AVIO_FLAG_READ  1)
 (def ^{:tag 'long} AVIO_FLAG_WRITE 2)
 (def ^{:tag 'long} AVIO_FLAG_READ_WRITE 3)
-
-(defn find-fn [fn-name] (dt-ffi/library-singleton-find-fn avformat fn-name))
-
-
-(dt-ffi/define-library-functions avclj.avformat/avformat-def find-fn check-error)
 
 
 (defn alloc-output-context
